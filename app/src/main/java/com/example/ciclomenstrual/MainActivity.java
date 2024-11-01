@@ -1,6 +1,7 @@
 package com.example.ciclomenstrual;
 
 import android.app.AlertDialog;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -9,6 +10,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.applandeo.materialcalendarview.CalendarUtils;
 import com.applandeo.materialcalendarview.CalendarView;
 import com.applandeo.materialcalendarview.CalendarDay;
 
@@ -53,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
     private void deleteCycle(Cycle cycle) {
         if (cycle != null) {
             cycles.remove(cycle);
+            selectedCycle = null;
             updateCalendarMarkers();
             Toast.makeText(this, "Ciclo eliminado", Toast.LENGTH_SHORT).show();
         }
@@ -62,9 +65,14 @@ public class MainActivity extends AppCompatActivity {
         Calendar selectedDate = clickedDay.getCalendar();
 
         // Buscar el ciclo para la fecha seleccionada (si existe), solo si selectedCycle ya es null
-        if (selectedCycle == null) {
+        /*if (selectedCycle == null) {
             selectedCycle = findCycleForDate(selectedDate);
+        }*/
+        Cycle cycle = findCycleForDate(selectedDate);
+        if (cycle != null) {
+            selectedCycle = cycle;
         }
+
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_day_options, null);
@@ -115,17 +123,8 @@ public class MainActivity extends AppCompatActivity {
 
     private Cycle findCycleForDate(Calendar date) {
         for (Cycle cycle : cycles) {
-            if (cycle.getStartDate() != null && cycle.getStartDate().equals(date)) {
-                // Si la fecha coincide con el inicio del ciclo, lo seleccionamos
+            if (cycle.getStartDate() != null && cycle.getEndDate() != null && cycle.containsDate(date)) {
                 return cycle;
-            } else if (cycle.getEndDate() != null && cycle.getEndDate().equals(date)) {
-                // Si la fecha coincide con el fin del ciclo, lo seleccionamos
-                return cycle;
-            } else if (cycle.getStartDate() != null && cycle.getEndDate() == null && cycle.containsDate(date)) {
-                // Si la fecha está dentro del rango del ciclo y no tiene fin, lo seleccionamos solo si coincide con el inicio
-                if (cycle.getStartDate().equals(date)) {
-                    return cycle;
-                }
             }
         }
         return null;
@@ -166,9 +165,9 @@ public class MainActivity extends AppCompatActivity {
         // Encontrar el último ciclo completado (con fecha de fin)
         Cycle lastCompleteCycle = null;
         for (Cycle cycle : cycles) {
-            if (cycle.getEndDate() != null) {
+            if (cycle.getStartDate() != null) {
                 if (lastCompleteCycle == null ||
-                        cycle.getEndDate().after(lastCompleteCycle.getEndDate())) {
+                        cycle.getStartDate().after(lastCompleteCycle.getStartDate())) {
                     lastCompleteCycle = cycle;
                 }
             }
@@ -216,6 +215,17 @@ public class MainActivity extends AppCompatActivity {
         CalendarDay predictedDay = new CalendarDay(nextPredictedStart);
         predictedDay.setBackgroundResource(R.color.predicted_day);
         predictedDay.setLabelColor(R.color.white);
+
+        // Verificar si la fecha predicha es anterior a la fecha actual
+        Calendar currentDate = Calendar.getInstance();
+        if (nextPredictedStart.before(currentDate)) {
+            // Crear el icono de alerta con una exclamación
+            Drawable alertIcon = CalendarUtils.getDrawableText(this, "\uD83D\uDC76\uD83C\uDFFB", null, R.color.red, 13); // Ajusta el color y tamaño según tus preferencias
+
+            // Agregar icono de alerta
+            predictedDay.setImageDrawable(alertIcon); // Usar setImageResource() con el Drawable creado
+        }
+
         calendarDays.add(predictedDay);
     }
 }

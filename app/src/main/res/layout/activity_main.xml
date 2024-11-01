@@ -31,6 +31,7 @@
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         app:swipeEnabled="false"
         app:type="one_day_picker"
+        app:eventsEnabled="true"
         app:headerColor="?attr/colorPrimary"
         app:headerLabelColor="?attr/colorOnPrimary"
         app:todayLabelColor="?attr/colorPrimary"
