@@ -1,7 +1,6 @@
 package com.example.ciclomenstrual;
 
 import android.app.AlertDialog;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -51,9 +50,21 @@ public class MainActivity extends AppCompatActivity {
         calendarView.setOnCalendarDayClickListener(this::showDayOptionsDialog);
     }
 
+    private void deleteCycle(Cycle cycle) {
+        if (cycle != null) {
+            cycles.remove(cycle);
+            updateCalendarMarkers();
+            Toast.makeText(this, "Ciclo eliminado", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void showDayOptionsDialog(CalendarDay clickedDay) {
         Calendar selectedDate = clickedDay.getCalendar();
-        selectedCycle = findCycleForDate(selectedDate);
+
+        // Buscar el ciclo para la fecha seleccionada (si existe), solo si selectedCycle ya es null
+        if (selectedCycle == null) {
+            selectedCycle = findCycleForDate(selectedDate);
+        }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_day_options, null);
@@ -65,31 +76,56 @@ public class MainActivity extends AppCompatActivity {
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
         dateText.setText(getString(R.string.selected_date, dateFormat.format(selectedDate.getTime())));
 
-        // Actualizar texto de botones si estamos modificando un ciclo existente
-        if (selectedCycle != null) {
-            btnStartCycle.setText(R.string.change_cycle_start);
-            btnEndCycle.setText(R.string.change_cycle_end);
-        }
-
         AlertDialog dialog = builder.setView(dialogView).create();
 
-        btnStartCycle.setOnClickListener(v -> {
-            markCycleStart(selectedDate);
-            dialog.dismiss();
-        });
+        // Actualizar texto de botones o agregar botón "Eliminar ciclo"
+        if (selectedCycle != null && selectedCycle.getStartDate() != null && selectedCycle.getEndDate() != null) {
+            // Si la fecha pertenece a un ciclo completo, mostrar opción para eliminarlo
+            btnStartCycle.setText(R.string.delete_cycle); // Reutilizar el botón de inicio
+            btnStartCycle.setOnClickListener(v -> {
+                deleteCycle(selectedCycle);
+                dialog.dismiss(); // Acceder a dialog desde el ámbito de la clase anónima
+            });
+            btnEndCycle.setVisibility(View.GONE); // Ocultar el botón de fin
+        } else {
+            // Si no hay ciclo o solo tiene inicio, mostrar opciones para marcar inicio o fin
+            if (selectedCycle != null) {
+                // Si hay un ciclo con solo inicio, mostrar opción para cambiar inicio o marcar fin
+                btnStartCycle.setText(R.string.change_cycle_start);
+                btnEndCycle.setText(R.string.mark_cycle_end);
+            } else {
+                // Si no hay ciclo, mostrar opciones para marcar inicio o fin
+                btnStartCycle.setText(R.string.mark_cycle_start);
+                btnEndCycle.setText(R.string.mark_cycle_end);
+            }
 
-        btnEndCycle.setOnClickListener(v -> {
-            markCycleEnd(selectedDate);
-            dialog.dismiss();
-        });
+            btnStartCycle.setOnClickListener(v -> {
+                markCycleStart(selectedDate);
+                dialog.dismiss();
+            });
+
+            btnEndCycle.setOnClickListener(v -> {
+                markCycleEnd(selectedDate);
+                dialog.dismiss();
+            });
+        }
 
         dialog.show();
     }
 
     private Cycle findCycleForDate(Calendar date) {
         for (Cycle cycle : cycles) {
-            if (cycle.containsDate(date)) {
+            if (cycle.getStartDate() != null && cycle.getStartDate().equals(date)) {
+                // Si la fecha coincide con el inicio del ciclo, lo seleccionamos
                 return cycle;
+            } else if (cycle.getEndDate() != null && cycle.getEndDate().equals(date)) {
+                // Si la fecha coincide con el fin del ciclo, lo seleccionamos
+                return cycle;
+            } else if (cycle.getStartDate() != null && cycle.getEndDate() == null && cycle.containsDate(date)) {
+                // Si la fecha está dentro del rango del ciclo y no tiene fin, lo seleccionamos solo si coincide con el inicio
+                if (cycle.getStartDate().equals(date)) {
+                    return cycle;
+                }
             }
         }
         return null;
@@ -97,14 +133,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void markCycleStart(Calendar startDate) {
         if (selectedCycle != null) {
-            // Si la fecha es posterior al fin del ciclo, no permitir
-            if (selectedCycle.getEndDate() != null && startDate.after(selectedCycle.getEndDate())) {
-                Toast.makeText(this, "La fecha de inicio no puede ser posterior al fin del ciclo", Toast.LENGTH_SHORT).show();
-                return;
-            }
+            // Actualizar la fecha de inicio del ciclo existente
             selectedCycle.setStartDate(startDate);
         } else {
-            // Crear nuevo ciclo
+            // Crear un nuevo ciclo
             Cycle newCycle = new Cycle(startDate, null);
             cycles.add(newCycle);
             selectedCycle = newCycle;
@@ -177,10 +209,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void predictNextCycle(Cycle cycle) {
-        // Calcular la duración del ciclo actual
-        long cycleLength = (cycle.getEndDate().getTimeInMillis() - cycle.getStartDate().getTimeInMillis()) /
-                (24 * 60 * 60 * 1000);
-
         // Predecir próximo inicio
         Calendar nextPredictedStart = (Calendar) cycle.getStartDate().clone();
         nextPredictedStart.add(Calendar.DAY_OF_MONTH, DEFAULT_CYCLE_LENGTH);

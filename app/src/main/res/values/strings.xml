@@ -5,6 +5,7 @@
     <string name="first_fragment_label">First Fragment</string>
     <string name="second_fragment_label">Second Fragment</string>
     <string name="next">Next</string>
+    <string name="delete_cycle">Eliminar ciclo</string>
     <string name="action_statistics">Estadísticas</string>
     <string name="action_history">Historial</string>
     <string name="action_backup">Copia de seguridad</string>
