@@ -1,0 +1,26 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.example.ciclomenstrual.MainActivity" >
+
+    <item android:id="@+id/action_stats"
+        android:title="@string/action_statistics"
+        android:icon="@android:drawable/ic_menu_recent_history"
+        android:orderInCategory="90"
+        app:showAsAction="ifRoom" />
+
+    <item android:id="@+id/action_settings"
+        android:title="@string/action_settings"
+        android:orderInCategory="100"
+        app:showAsAction="never" />
+
+    <item android:id="@+id/action_history"
+        android:title="@string/action_history"
+        android:orderInCategory="110"
+        app:showAsAction="never" />
+
+    <item android:id="@+id/action_backup"
+        android:title="@string/action_backup"
+        android:orderInCategory="120"
+        app:showAsAction="never" />
+</menu>
