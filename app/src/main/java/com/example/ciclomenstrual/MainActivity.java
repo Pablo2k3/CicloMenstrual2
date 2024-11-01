@@ -55,7 +55,6 @@ public class MainActivity extends AppCompatActivity {
     private void deleteCycle(Cycle cycle) {
         if (cycle != null) {
             cycles.remove(cycle);
-            selectedCycle = null;
             updateCalendarMarkers();
             Toast.makeText(this, "Ciclo eliminado", Toast.LENGTH_SHORT).show();
         }
@@ -68,10 +67,7 @@ public class MainActivity extends AppCompatActivity {
         /*if (selectedCycle == null) {
             selectedCycle = findCycleForDate(selectedDate);
         }*/
-        Cycle cycle = findCycleForDate(selectedDate);
-        if (cycle != null) {
-            selectedCycle = cycle;
-        }
+        Cycle cycleBorrar = findCycleForDate(selectedDate);
 
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -87,11 +83,11 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog dialog = builder.setView(dialogView).create();
 
         // Actualizar texto de botones o agregar botón "Eliminar ciclo"
-        if (selectedCycle != null && selectedCycle.getStartDate() != null && selectedCycle.getEndDate() != null) {
+        if (cycleBorrar != null && cycleBorrar.getStartDate() != null && cycleBorrar.getEndDate() != null) {
             // Si la fecha pertenece a un ciclo completo, mostrar opción para eliminarlo
             btnStartCycle.setText(R.string.delete_cycle); // Reutilizar el botón de inicio
             btnStartCycle.setOnClickListener(v -> {
-                deleteCycle(selectedCycle);
+                deleteCycle(cycleBorrar);
                 dialog.dismiss(); // Acceder a dialog desde el ámbito de la clase anónima
             });
             btnEndCycle.setVisibility(View.GONE); // Ocultar el botón de fin
@@ -137,7 +133,13 @@ public class MainActivity extends AppCompatActivity {
         } else {
             // Crear un nuevo ciclo
             Cycle newCycle = new Cycle(startDate, null);
-            cycles.add(newCycle);
+            int indiceCiclo = 0;
+            for (Cycle cycle : cycles) {
+                if (newCycle.getStartDate().after(cycle.getStartDate())) {
+                    indiceCiclo++;
+                }
+            }
+            cycles.add(indiceCiclo, newCycle);
             selectedCycle = newCycle;
         }
         updateCalendarMarkers();
@@ -154,6 +156,23 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        // comprobamos el ciclo siguiente, si existe, para ver si hay ciclos contenidos
+
+        int index = cycles.indexOf(selectedCycle);
+        if (index < cycles.size() - 1) {
+            Cycle cicloSiguiente = cycles.get(index+1);
+            if (cicloSiguiente.getStartDate() != null && cicloSiguiente.getStartDate().before(endDate)){
+                // Existe un ciclo contenido, cancelar la creación del nuevo ciclo
+                Toast.makeText(this, "Ya existe un ciclo en ese rango de fechas", Toast.LENGTH_SHORT).show();
+                cycles.remove(selectedCycle);
+                selectedCycle = null; // Resetear la selección del ciclo
+                updateCalendarMarkers();
+                return; // Salir del méto.do sin crear o actualizar el ciclo
+            }
+        }
+
+
+        // Si no hay ciclos contenidos, actualizar el ciclo
         selectedCycle.setEndDate(endDate);
         updateCalendarMarkers();
         selectedCycle = null; // Reset selección actual
@@ -164,13 +183,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Encontrar el último ciclo completado (con fecha de fin)
         Cycle lastCompleteCycle = null;
-        for (Cycle cycle : cycles) {
-            if (cycle.getStartDate() != null) {
-                if (lastCompleteCycle == null ||
-                        cycle.getStartDate().after(lastCompleteCycle.getStartDate())) {
-                    lastCompleteCycle = cycle;
-                }
-            }
+        if (!cycles.isEmpty()){
+            lastCompleteCycle = cycles.get(cycles.size() - 1);
         }
 
         // Marcar todos los ciclos
