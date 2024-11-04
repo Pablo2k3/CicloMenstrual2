@@ -22,20 +22,37 @@
             app:layout_scrollFlags="scroll|enterAlways"/>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <com.applandeo.materialcalendarview.CalendarView
-        android:id="@+id/calendarView"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="8dp"
-        android:layout_marginHorizontal="8dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        app:swipeEnabled="false"
-        app:type="one_day_picker"
-        app:eventsEnabled="true"
-        app:headerColor="?attr/colorPrimary"
-        app:headerLabelColor="?attr/colorOnPrimary"
-        app:todayLabelColor="?attr/colorPrimary"
-        app:selectionColor="?attr/colorSecondary"/>
+        android:orientation="vertical"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <com.applandeo.materialcalendarview.CalendarView
+            android:id="@+id/calendarView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginHorizontal="8dp"
+            app:swipeEnabled="false"
+            app:type="one_day_picker"
+            app:eventsEnabled="true"
+            app:headerColor="?attr/colorPrimary"
+            app:headerLabelColor="?attr/colorOnPrimary"
+            app:todayLabelColor="?attr/colorPrimary"
+            app:selectionColor="?attr/colorSecondary"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/notesRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_margin="8dp"
+            android:padding="8dp"
+            android:background="@android:color/white"/>
+        <!-- Se ha eliminado el ScrollView -->
+
+    </LinearLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab"

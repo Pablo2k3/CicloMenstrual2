@@ -5,10 +5,14 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.DividerItemDecoration;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.applandeo.materialcalendarview.CalendarUtils;
 import com.applandeo.materialcalendarview.CalendarView;
@@ -17,16 +21,19 @@ import com.applandeo.materialcalendarview.CalendarDay;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNoteDeletedListener {
 
     private CalendarView calendarView;
     private List<CalendarDay> calendarDays;
     private List<Cycle> cycles;
     private static final int DEFAULT_CYCLE_LENGTH = 28;
     private Cycle selectedCycle; // Para modificar un ciclo existente
+    private HashMap<Calendar, List<String>> dayNotes = new HashMap<>();
+    private NotesAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +43,15 @@ public class MainActivity extends AppCompatActivity {
         cycles = new ArrayList<>();
         calendarDays = new ArrayList<>();
         setupCalendarView();
+
+        // Inicializar el RecyclerView y el adaptador
+        RecyclerView notesRecyclerView = findViewById(R.id.notesRecyclerView);
+        adapter = new NotesAdapter(new ArrayList<>(), this);
+        notesRecyclerView.setAdapter(adapter);
+        notesRecyclerView.setLayoutManager(new LinearLayoutManager(this)); // Configurar el layout manager
+        DividerItemDecoration dividerItemDecoration = new DividerItemDecoration(notesRecyclerView.getContext(),
+                LinearLayoutManager.VERTICAL);
+        notesRecyclerView.addItemDecoration(dividerItemDecoration);
     }
 
     private void setupCalendarView() {
@@ -60,8 +76,42 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Implementación de la interfaz OnNoteDeletedListener
+    @Override
+    public void onNoteDeleted(int position) {
+        // Obtener la fecha seleccionada
+        Calendar selectedDate = calendarView.getFirstSelectedDate();
+        // Obtener la lista de notas para la fecha seleccionada
+        List<String> notesForDate = dayNotes.get(selectedDate);
+
+        // Eliminar la nota en la posición especificada
+        if (notesForDate != null && position >= 0 && position < notesForDate.size()) {
+            notesForDate.remove(position);
+            dayNotes.put(selectedDate, notesForDate); // Actualizar el HashMap
+
+            // Actualizar el adaptador del RecyclerView
+            RecyclerView notesRecyclerView = findViewById(R.id.notesRecyclerView);
+            NotesAdapter adapter = (NotesAdapter) notesRecyclerView.getAdapter();
+            if (adapter != null) {
+                adapter.updateNotes(notesForDate);
+            }
+        }
+    }
     private void showDayOptionsDialog(CalendarDay clickedDay) {
         Calendar selectedDate = clickedDay.getCalendar();
+
+        // Obtener la lista de notas para la fecha seleccionada
+        List<String> notesForDate = dayNotes.get(selectedDate);
+
+        // Añadir log para debug
+        System.out.println("Mostrando notas para la fecha " + selectedDate.getTime() + ": " + notesForDate);
+
+        // Mostrar las notas en el RecyclerView
+        RecyclerView notesRecyclerView = findViewById(R.id.notesRecyclerView);
+        NotesAdapter adapter = (NotesAdapter) notesRecyclerView.getAdapter();
+        if (adapter != null) {
+            adapter.updateNotes(notesForDate != null ? notesForDate : new ArrayList<>());
+        }
 
         // Buscar el ciclo para la fecha seleccionada (si existe), solo si selectedCycle ya es null
         /*if (selectedCycle == null) {
@@ -113,7 +163,12 @@ public class MainActivity extends AppCompatActivity {
                 dialog.dismiss();
             });
         }
-
+        // Agregar la opción de añadir/editar nota
+        Button btnAddNote = dialogView.findViewById(R.id.btnAddNote);
+        btnAddNote.setOnClickListener(v -> {
+            showAddNoteDialog(selectedDate);
+            dialog.dismiss();
+        });
         dialog.show();
     }
 
@@ -125,7 +180,46 @@ public class MainActivity extends AppCompatActivity {
         }
         return null;
     }
+    private void showAddNoteDialog(Calendar selectedDate) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Añadir nota");
 
+        final EditText input = new EditText(this);
+        builder.setView(input);
+
+        builder.setPositiveButton("Guardar", (dialog, which) -> {
+            String note = input.getText().toString();
+
+            // Obtener la lista de notas para la fecha seleccionada o crear una nueva si no existe
+            List<String> notesForDate;
+            if (dayNotes.containsKey(selectedDate)) {
+                notesForDate = dayNotes.get(selectedDate);
+            } else {
+                notesForDate = new ArrayList<>();
+            }
+
+            // Agregar la nueva nota a la lista
+            notesForDate.add(note);
+
+            // Actualizar el HashMap con la lista de notas actualizada
+            dayNotes.put(selectedDate, notesForDate);
+
+            // Añadir log para debug
+            System.out.println("Notas para la fecha " + selectedDate.getTime() + ": " + notesForDate);
+
+            updateCalendarMarkers();
+
+            // Actualizar el adaptador del RecyclerView
+            RecyclerView notesRecyclerView = findViewById(R.id.notesRecyclerView);
+            if (adapter != null) {
+                adapter.updateNotes(notesForDate); // Méto.do para actualizar las notas en el adaptador
+                System.out.println("Adapter actualizado con " + notesForDate.size() + " notas");
+            }
+        });
+        builder.setNegativeButton("Cancelar", (dialog, which) -> dialog.cancel());
+
+        builder.show();
+    }
     private void markCycleStart(Calendar startDate) {
         if (selectedCycle != null) {
             // Actualizar la fecha de inicio del ciclo existente
@@ -191,7 +285,7 @@ public class MainActivity extends AppCompatActivity {
         for (Cycle cycle : cycles) {
             if (cycle.getStartDate() != null) {
                 if (cycle.getEndDate() != null) {
-                    // Si tiene fecha de fin, marcar todo el rango
+                    // Si tiene fecha de fin, marcar to.do el rango
                     Calendar currentDate = (Calendar) cycle.getStartDate().clone();
                     Calendar endDate = cycle.getEndDate();
 
