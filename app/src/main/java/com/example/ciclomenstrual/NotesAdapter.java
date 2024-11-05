@@ -16,7 +16,7 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
 
     private List<String> notes;
     private final OnNoteDeletedListener onNoteDeletedListener; // Listener para la eliminación de notas
-
+    private RecyclerView.ViewHolder holder;
     public NotesAdapter(List<String> notes, OnNoteDeletedListener listener) {
         this.notes = notes;
         this.onNoteDeletedListener = listener;
@@ -31,6 +31,7 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
 
     @Override
     public void onBindViewHolder(@NonNull NoteViewHolder holder, int position) {
+        this.holder = holder;
         String note = notes.get(position);
         holder.noteTextView.setText(note);
 

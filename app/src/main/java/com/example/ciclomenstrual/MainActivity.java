@@ -1,6 +1,7 @@
 package com.example.ciclomenstrual;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.View;
@@ -108,23 +109,32 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
     // Implementación de la interfaz OnNoteDeletedListener
     @Override
     public void onNoteDeleted(int position) {
-        // Obtener la fecha seleccionada
-        Calendar selectedDate = calendarView.getFirstSelectedDate();
-        // Obtener la lista de notas para la fecha seleccionada
-        List<String> notesForDate = dayNotes.get(selectedDate);
+        // Obtener el contexto
+        Context context = this; // Puedes usar 'this' ya que estás en MainActivity
 
-        // Eliminar la nota en la posición especificada
-        if (notesForDate != null && position >= 0 && position < notesForDate.size()) {
-            notesForDate.remove(position);
-            dayNotes.put(selectedDate, notesForDate); // Actualizar el HashMap
+        // Crear el AlertDialog
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("Eliminar nota");
+        builder.setMessage("¿Estás seguro de que quieres eliminar esta nota?");
 
-            // Actualizar el adaptador del RecyclerView
-            RecyclerView notesRecyclerView = findViewById(R.id.notesRecyclerView);
-            NotesAdapter adapter = (NotesAdapter) notesRecyclerView.getAdapter();
-            if (adapter != null) {
-                adapter.updateNotes(notesForDate);
+        // Agregar botones
+        builder.setPositiveButton("Eliminar", (dialog, which) -> {
+            // Eliminar la nota de la lista dayNotes
+            List<String> notesForDate = dayNotes.get(selectedDate);
+            if (notesForDate != null) {
+                notesForDate.remove(position);
+                dayNotes.put(selectedDate, notesForDate); // Actualizar dayNotes
+                adapter.updateNotes(notesForDate); // Actualizar el adaptador
             }
-        }
+            dialog.dismiss();
+        });
+
+        builder.setNegativeButton("Cancelar", (dialog, which) -> {
+            dialog.dismiss();
+        });
+
+        // Mostrar el AlertDialog
+        builder.show();
     }
     private void showDayOptionsDialog(CalendarDay clickedDay) {
         Calendar selectedDate = clickedDay.getCalendar();
