@@ -17,6 +17,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.applandeo.materialcalendarview.CalendarUtils;
 import com.applandeo.materialcalendarview.CalendarView;
 import com.applandeo.materialcalendarview.CalendarDay;
+import com.applandeo.materialcalendarview.EventDay;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -34,7 +36,7 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
     private Cycle selectedCycle; // Para modificar un ciclo existente
     private HashMap<Calendar, List<String>> dayNotes = new HashMap<>();
     private NotesAdapter adapter;
-
+    private Calendar selectedDate;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -48,10 +50,26 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         RecyclerView notesRecyclerView = findViewById(R.id.notesRecyclerView);
         adapter = new NotesAdapter(new ArrayList<>(), this);
         notesRecyclerView.setAdapter(adapter);
-        notesRecyclerView.setLayoutManager(new LinearLayoutManager(this)); // Configurar el layout manager
+        notesRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         DividerItemDecoration dividerItemDecoration = new DividerItemDecoration(notesRecyclerView.getContext(),
                 LinearLayoutManager.VERTICAL);
         notesRecyclerView.addItemDecoration(dividerItemDecoration);
+
+        // Agregar listener al FloatingActionButton
+        FloatingActionButton fab = findViewById(R.id.fab);
+        fab.setOnClickListener(v -> {
+            // Obtener el día marcado
+            Calendar selectedDate = calendarView.getFirstSelectedDate();
+
+            // Verificar si hay un día marcado
+            if (selectedDate != null) {
+                // Mostrar el diálogo con las opciones
+                showDayOptionsDialog(new CalendarDay(selectedDate));
+            } else {
+                // Mostrar un mensaje al usuario indicando que no hay un día marcado
+                Toast.makeText(this, "Selecciona un día en el calendario", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void setupCalendarView() {
@@ -65,7 +83,18 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         calendarView.setMinimumDate(minDate);
         calendarView.setMaximumDate(maxDate);
 
-        calendarView.setOnCalendarDayClickListener(this::showDayOptionsDialog);
+        calendarView.setOnCalendarDayClickListener(eventDay -> {
+            // Guardar la fecha seleccionada
+            selectedDate = eventDay.getCalendar();
+
+            // Obtener las notas para la fecha seleccionada
+            List<String> notesForDate = dayNotes.get(selectedDate);
+
+            // Actualizar el adaptador del RecyclerView con las notas
+            if (adapter != null) {
+                adapter.updateNotes(notesForDate != null ? notesForDate : new ArrayList<>());
+            }
+        });
     }
 
     private void deleteCycle(Cycle cycle) {

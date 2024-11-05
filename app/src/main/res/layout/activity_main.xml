@@ -61,7 +61,7 @@
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
-        app:srcCompat="@android:drawable/ic_dialog_email"
+        app:srcCompat="@android:drawable/ic_menu_add"
         android:contentDescription="@string/add_event"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
