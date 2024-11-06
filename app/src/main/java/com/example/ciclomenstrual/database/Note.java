@@ -6,19 +6,22 @@ import androidx.room.PrimaryKey;
 
 @Entity(tableName = "notes")
 public class Note {
-
     @PrimaryKey(autoGenerate = true)
-    public int id;
+    private long id;
 
-    @ColumnInfo(name = "date")
-    public long date; // Almacena la fecha como un long (milisegundos desde la época)
+    private long date; // Almacenaremos la fecha como timestamp
+    private String content;
 
-    @ColumnInfo(name = "text")
-    public String text;
-
-    // Constructor
-    public Note(long date, String text) {
+    public Note(long date, String content) {
         this.date = date;
-        this.text = text;
+        this.content = content;
     }
+
+    // Getters y setters
+    public long getId() { return id; }
+    public void setId(long id) { this.id = id; }
+    public long getDate() { return date; }
+    public void setDate(long date) { this.date = date; }
+    public String getContent() { return content; }
+    public void setContent(String content) { this.content = content; }
 }

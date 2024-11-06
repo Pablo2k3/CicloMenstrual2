@@ -21,6 +21,7 @@ import com.applandeo.materialcalendarview.CalendarDay;
 import com.applandeo.materialcalendarview.EventDay;
 import com.example.ciclomenstrual.database.AppDatabase;
 import com.example.ciclomenstrual.database.CycleDao;
+import com.example.ciclomenstrual.database.Note;
 import com.example.ciclomenstrual.database.NoteDao;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -54,7 +55,9 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        // Borra la base de datos
+        //this.deleteDatabase("app_database");
+        //
         // Obtener una instancia de AppDatabase
         db = AppDatabase.getInstance(this);
         cycleDao = db.cycleDao();
@@ -89,13 +92,18 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
             }
         });
 
-        // Cargar los ciclos de la base de datos al iniciar la aplicación
+        // Cargar tanto los ciclos como las notas
         executor.execute(() -> {
             List<com.example.ciclomenstrual.database.Cycle> cyclesDB = cycleDao.getAllCycles();
             for (com.example.ciclomenstrual.database.Cycle cycleDB : cyclesDB) {
                 cycles.add(CycleConverter.fromRoomCycle(cycleDB));
             }
-            runOnUiThread(this::updateCalendarMarkers); // Actualizar la UI en el hilo principal
+
+            // Cargar notas
+            List<Note> notesDB = noteDao.getAllNotes();
+            NoteConverter.loadNotesIntoMap(dayNotes, notesDB);
+
+            runOnUiThread(this::updateCalendarMarkers);
         });
     }
 
@@ -141,31 +149,36 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
     // Implementación de la interfaz OnNoteDeletedListener
     @Override
     public void onNoteDeleted(int position) {
-        // Obtener el contexto
-        Context context = this; // Puedes usar 'this' ya que estás en MainActivity
-
-        // Crear el AlertDialog
+        Context context = this;
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle("Eliminar nota");
         builder.setMessage("¿Estás seguro de que quieres eliminar esta nota?");
 
-        // Agregar botones
         builder.setPositiveButton("Eliminar", (dialog, which) -> {
-            // Eliminar la nota de la lista dayNotes
             List<String> notesForDate = dayNotes.get(selectedDate);
-            if (notesForDate != null) {
-                notesForDate.remove(position);
-                dayNotes.put(selectedDate, notesForDate); // Actualizar dayNotes
-                adapter.updateNotes(notesForDate); // Actualizar el adaptador
+            if (notesForDate != null && position < notesForDate.size()) {
+                String noteContent = notesForDate.get(position);
+
+                // Eliminar de la base de datos
+                executor.execute(() -> {
+                    noteDao.deleteNoteByDateAndContent(
+                            NoteConverter.dateToTimestamp(selectedDate),
+                            noteContent
+                    );
+                    runOnUiThread(() -> {
+                        // Actualizar el HashMap local
+                        notesForDate.remove(position);
+                        dayNotes.put(selectedDate, notesForDate);
+
+                        // Actualizar la UI
+                        adapter.updateNotes(notesForDate);
+                    });
+                });
             }
             dialog.dismiss();
         });
 
-        builder.setNegativeButton("Cancelar", (dialog, which) -> {
-            dialog.dismiss();
-        });
-
-        // Mostrar el AlertDialog
+        builder.setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss());
         builder.show();
     }
     private void showDayOptionsDialog(CalendarDay clickedDay) {
@@ -259,36 +272,38 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         builder.setView(input);
 
         builder.setPositiveButton("Guardar", (dialog, which) -> {
-            String note = input.getText().toString();
+            String noteContent = input.getText().toString();
+            if (!noteContent.trim().isEmpty()) {
+                // Normalizar la fecha
+                Calendar normalizedDate = (Calendar) selectedDate.clone();
+                normalizedDate.set(Calendar.HOUR_OF_DAY, 0);
+                normalizedDate.set(Calendar.MINUTE, 0);
+                normalizedDate.set(Calendar.SECOND, 0);
+                normalizedDate.set(Calendar.MILLISECOND, 0);
 
-            // Obtener la lista de notas para la fecha seleccionada o crear una nueva si no existe
-            List<String> notesForDate;
-            if (dayNotes.containsKey(selectedDate)) {
-                notesForDate = dayNotes.get(selectedDate);
-            } else {
-                notesForDate = new ArrayList<>();
-            }
+                // Crear nota para la base de datos
+                Note newNote = new Note(NoteConverter.dateToTimestamp(normalizedDate), noteContent);
 
-            // Agregar la nueva nota a la lista
-            notesForDate.add(note);
+                // Guardar en la base de datos
+                executor.execute(() -> {
+                    noteDao.insert(newNote);
+                    runOnUiThread(() -> {
+                        // Actualizar el HashMap local
+                        if (!dayNotes.containsKey(normalizedDate)) {
+                            dayNotes.put(normalizedDate, new ArrayList<>());
+                        }
+                        dayNotes.get(normalizedDate).add(noteContent);
 
-            // Actualizar el HashMap con la lista de notas actualizada
-            dayNotes.put(selectedDate, notesForDate);
-
-            // Añadir log para debug
-            System.out.println("Notas para la fecha " + selectedDate.getTime() + ": " + notesForDate);
-
-            updateCalendarMarkers();
-
-            // Actualizar el adaptador del RecyclerView
-            RecyclerView notesRecyclerView = findViewById(R.id.notesRecyclerView);
-            if (adapter != null) {
-                adapter.updateNotes(notesForDate); // Méto.do para actualizar las notas en el adaptador
-                System.out.println("Adapter actualizado con " + notesForDate.size() + " notas");
+                        // Actualizar la UI
+                        if (adapter != null) {
+                            adapter.updateNotes(dayNotes.get(normalizedDate));
+                        }
+                        updateCalendarMarkers();
+                    });
+                });
             }
         });
         builder.setNegativeButton("Cancelar", (dialog, which) -> dialog.cancel());
-
         builder.show();
     }
     private void markCycleStart(Calendar startDate) {

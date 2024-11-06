@@ -3,23 +3,27 @@ package com.example.ciclomenstrual.database;
 import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
+import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
-import androidx.room.Update;
+
+import com.example.ciclomenstrual.database.Note;
 
 import java.util.List;
 
 @Dao
 public interface NoteDao {
+    @Query("SELECT * FROM notes WHERE date = :date")
+    List<Note> getNotesForDate(long date);
 
-    @Insert
-    void insertNote(Note note);
+    @Query("SELECT * FROM notes")
+    List<Note> getAllNotes();
 
-    @Update
-    void updateNote(Note note);
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insert(Note note);
 
     @Delete
-    void deleteNote(Note note);
+    void delete(Note note);
 
-    @Query("SELECT * FROM notes WHERE date = :date")
-    List<Note> getNotesForDate(long date); // Consulta por fecha (long)
+    @Query("DELETE FROM notes WHERE date = :date AND content = :content")
+    void deleteNoteByDateAndContent(long date, String content);
 }
