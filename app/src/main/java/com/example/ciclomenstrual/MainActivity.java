@@ -19,6 +19,9 @@ import com.applandeo.materialcalendarview.CalendarUtils;
 import com.applandeo.materialcalendarview.CalendarView;
 import com.applandeo.materialcalendarview.CalendarDay;
 import com.applandeo.materialcalendarview.EventDay;
+import com.example.ciclomenstrual.database.AppDatabase;
+import com.example.ciclomenstrual.database.CycleDao;
+import com.example.ciclomenstrual.database.NoteDao;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.text.SimpleDateFormat;
@@ -27,6 +30,10 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import androidx.lifecycle.LifecycleOwner;
 
 public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNoteDeletedListener {
 
@@ -38,12 +45,22 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
     private HashMap<Calendar, List<String>> dayNotes = new HashMap<>();
     private NotesAdapter adapter;
     private Calendar selectedDate;
+    private AppDatabase db;
+    private CycleDao cycleDao; // Declarar cycleDao
+    private NoteDao noteDao;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        cycles = new ArrayList<>();
+        // Obtener una instancia de AppDatabase
+        db = AppDatabase.getInstance(this);
+        cycleDao = db.cycleDao();
+        noteDao = db.noteDao();
+
+        cycles = new ArrayList<>(); // Inicializar la lista cycles
         calendarDays = new ArrayList<>();
         setupCalendarView();
 
@@ -71,7 +88,17 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
                 Toast.makeText(this, "Selecciona un día en el calendario", Toast.LENGTH_SHORT).show();
             }
         });
+
+        // Cargar los ciclos de la base de datos al iniciar la aplicación
+        executor.execute(() -> {
+            List<com.example.ciclomenstrual.database.Cycle> cyclesDB = cycleDao.getAllCycles();
+            for (com.example.ciclomenstrual.database.Cycle cycleDB : cyclesDB) {
+                cycles.add(CycleConverter.fromRoomCycle(cycleDB));
+            }
+            runOnUiThread(this::updateCalendarMarkers); // Actualizar la UI en el hilo principal
+        });
     }
+
 
     private void setupCalendarView() {
         calendarView = findViewById(R.id.calendarView);
@@ -100,9 +127,14 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
 
     private void deleteCycle(Cycle cycle) {
         if (cycle != null) {
-            cycles.remove(cycle);
-            updateCalendarMarkers();
-            Toast.makeText(this, "Ciclo eliminado", Toast.LENGTH_SHORT).show();
+            executor.execute(() -> {
+                cycleDao.deleteCycle(CycleConverter.toRoomCycle(cycle));
+                runOnUiThread(() -> {
+                    cycles.remove(cycle);
+                    updateCalendarMarkers();
+                    Toast.makeText(this, "Ciclo eliminado", Toast.LENGTH_SHORT).show();
+                });
+            });
         }
     }
 
@@ -290,7 +322,6 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         }
 
         // comprobamos el ciclo siguiente, si existe, para ver si hay ciclos contenidos
-
         int index = cycles.indexOf(selectedCycle);
         if (index < cycles.size() - 1) {
             Cycle cicloSiguiente = cycles.get(index+1);
@@ -300,15 +331,24 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
                 cycles.remove(selectedCycle);
                 selectedCycle = null; // Resetear la selección del ciclo
                 updateCalendarMarkers();
-                return; // Salir del méto.do sin crear o actualizar el ciclo
+                return; // Salir del método sin crear o actualizar el ciclo
             }
         }
 
-
         // Si no hay ciclos contenidos, actualizar el ciclo
         selectedCycle.setEndDate(endDate);
-        updateCalendarMarkers();
-        selectedCycle = null; // Reset selección actual
+
+        // Convertir a entidad de Room
+        com.example.ciclomenstrual.database.Cycle roomCycle = CycleConverter.toRoomCycle(selectedCycle);
+
+        // Insertar en la base de datos usando executor
+        executor.execute(() -> {
+            cycleDao.insertCycle(roomCycle);
+            runOnUiThread(() -> {
+                updateCalendarMarkers();
+                selectedCycle = null; // Reset selección actual
+            });
+        });
     }
 
     private void updateCalendarMarkers() {
@@ -374,5 +414,13 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         }
 
         calendarDays.add(predictedDay);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (executor != null) {
+            executor.shutdown();
+        }
     }
 }

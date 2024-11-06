@@ -11,6 +11,10 @@ public class Cycle {
         this.endDate = endDate;
     }
 
+    public Cycle() {
+
+    }
+
     public Calendar getStartDate() {
         return startDate;
     }
@@ -29,5 +33,13 @@ public class Cycle {
 
     public boolean containsDate(Calendar date) {
         return !date.before(startDate) && !date.after(endDate);
+    }
+
+    public static Cycle fromRoomCycle(com.example.ciclomenstrual.database.Cycle roomCycle) {
+        Cycle cycle = new Cycle();
+        cycle.startDate = roomCycle.getStartDate();
+        cycle.endDate = roomCycle.getEndDate();
+        // ... copiar otros campos ...
+        return cycle;
     }
 }

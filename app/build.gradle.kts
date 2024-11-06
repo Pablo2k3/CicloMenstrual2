@@ -37,6 +37,8 @@ dependencies {
     implementation(libs.navigation.fragment)
     implementation(libs.monitor)
     implementation(libs.ext.junit)
+    implementation(libs.cronet.embedded)
     testImplementation(libs.junit.junit) // Dependencia del calendario
-    // Otras dependencias
+    implementation("androidx.room:room-runtime:2.5.0")
+    annotationProcessor("androidx.room:room-compiler:2.5.0")
 }
