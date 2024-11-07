@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LayerDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -34,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -57,6 +59,8 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
     private NoteDao noteDao;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private WorkManager workManager;
+    Calendar nextPredictedDay;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -167,8 +171,15 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
             executor.execute(() -> {
                 cycleDao.deleteCycle(CycleConverter.toRoomCycle(cycle));
                 runOnUiThread(() -> {
+                    int index = cycles.indexOf(cycle);
+                    boolean notificar = (index == cycles.size() - 1);
                     cycles.remove(cycle);
-                    updateCalendarMarkers(false);
+
+                    if (notificar){
+                        // Cancelar todas las notificaciones pendientes
+                        workManager.cancelAllWorkByTag("cycle_notification");
+                    }
+                    updateCalendarMarkers(notificar);
                     Toast.makeText(this, "Ciclo eliminado", Toast.LENGTH_SHORT).show();
                 });
             });
@@ -201,6 +212,7 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
 
                         // Actualizar la UI
                         adapter.updateNotes(notesForDate);
+                        updateCalendarMarkers(false);
                     });
                 });
             }
@@ -389,13 +401,15 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         executor.execute(() -> {
             cycleDao.insertCycle(roomCycle);
             runOnUiThread(() -> {
-                updateCalendarMarkers(true);
+                boolean notificar = cycles.indexOf(selectedCycle) == cycles.size() - 1;
+                updateCalendarMarkers(notificar);
                 selectedCycle = null; // Reset selección actual
             });
         });
     }
 
     private void updateCalendarMarkers(boolean programarNotificacion) {
+        nextPredictedDay = null;
         calendarDays.clear();
 
         // Encontrar el último ciclo completado (con fecha de fin)
@@ -432,13 +446,53 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
 
         // Predecir solo después del último ciclo completado
         if (lastCompleteCycle != null) {
-            predictNextCycle(lastCompleteCycle, programarNotificacion);
+            nextPredictedDay = predictNextCycle(lastCompleteCycle, programarNotificacion);
+        }
+
+        Drawable alertaNota = CalendarUtils.getDrawableText(this, "\uD83D\uDCDD", null, R.color.black, 13); // Ajusta el color y tamaño según tus preferencias
+        Drawable alertIcon = CalendarUtils.getDrawableText(this, "⚠\uFE0F", null, R.color.red, 13); // Ajusta el color y tamaño según tus preferencias
+
+        // Crea un LayerDrawable con los iconos
+        LayerDrawable dobleIcono = new LayerDrawable(new Drawable[]{
+                CalendarUtils.getDrawableText(this, "\uD83D\uDCDD", null, R.color.black, 10),
+                CalendarUtils.getDrawableText(this, "⚠\uFE0F", null, R.color.red, 10)
+        });
+
+        // Ajusta la posición de los iconos
+        dobleIcono.setLayerInset(1, 0, 0, 40, 0);
+        dobleIcono.setLayerInset(0, 40, 0, 0, 0);
+
+        if(nextPredictedDay != null) {
+            // Marcar el próximo ciclo
+            CalendarDay predictedDay = new CalendarDay(nextPredictedDay);
+            predictedDay.setBackgroundResource(R.color.predicted_day);
+            predictedDay.setLabelColor(R.color.white);
+            calendarDays.add(predictedDay);
+
+            // Verificar si la fecha predicha es anterior a la fecha actual
+            Calendar currentDate = Calendar.getInstance();
+            if (nextPredictedDay.before(currentDate)) {
+                if (dayNotes.containsKey(nextPredictedDay) && !Objects.requireNonNull(dayNotes.get(nextPredictedDay)).isEmpty()) {
+                    predictedDay.setImageDrawable(dobleIcono);
+                } else{
+                    predictedDay.setImageDrawable(alertIcon); // Usar setImageResource() con el Drawable creado
+                }
+            }
+        }
+        List<Calendar> diasConNota = new ArrayList<>(dayNotes.keySet());
+        for (Calendar dia : diasConNota) {
+            if (dayNotes.get(dia).isEmpty()) continue;
+            CalendarDay day = new CalendarDay(dia);
+            if (!dia.equals(nextPredictedDay)){
+                day.setImageDrawable(alertaNota);
+            }
+            calendarDays.add(day);
         }
 
         calendarView.setCalendarDays(calendarDays);
     }
 
-    private void predictNextCycle(Cycle cycle, boolean programarNotificacion) {
+    private Calendar predictNextCycle(Cycle cycle, boolean programarNotificacion) {
         // Predecir próximo inicio
         Calendar nextPredictedStart = (Calendar) cycle.getStartDate().clone();
         nextPredictedStart.add(Calendar.DAY_OF_MONTH, DEFAULT_CYCLE_LENGTH);
@@ -463,24 +517,11 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
                 workManager.cancelAllWorkByTag("cycle_notification");
                 // Programar notificación
                 String message = "Tu próximo ciclo está previsto para mañana";
-                scheduleNotification(notificationDate, 16, 0, message);
+                scheduleNotification(notificationDate, 1, 0, message);
             }
         }
-        CalendarDay predictedDay = new CalendarDay(nextPredictedStart);
-        predictedDay.setBackgroundResource(R.color.predicted_day);
-        predictedDay.setLabelColor(R.color.white);
 
-        // Verificar si la fecha predicha es anterior a la fecha actual
-        Calendar currentDate = Calendar.getInstance();
-        if (nextPredictedStart.before(currentDate)) {
-            // Crear el icono de alerta con una exclamación
-            Drawable alertIcon = CalendarUtils.getDrawableText(this, "\uD83D\uDC76\uD83C\uDFFB", null, R.color.red, 13); // Ajusta el color y tamaño según tus preferencias
-
-            // Agregar icono de alerta
-            predictedDay.setImageDrawable(alertIcon); // Usar setImageResource() con el Drawable creado
-        }
-
-        calendarDays.add(predictedDay);
+        return nextPredictedStart;
     }
 
     private void scheduleNotification(Calendar notificationDate, int hour, int minute, String message) {
