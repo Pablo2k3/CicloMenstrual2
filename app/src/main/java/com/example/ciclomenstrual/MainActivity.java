@@ -2,7 +2,9 @@ package com.example.ciclomenstrual;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -11,6 +13,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -18,7 +21,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.applandeo.materialcalendarview.CalendarUtils;
 import com.applandeo.materialcalendarview.CalendarView;
 import com.applandeo.materialcalendarview.CalendarDay;
-import com.applandeo.materialcalendarview.EventDay;
 import com.example.ciclomenstrual.database.AppDatabase;
 import com.example.ciclomenstrual.database.CycleDao;
 import com.example.ciclomenstrual.database.Note;
@@ -34,7 +36,11 @@ import java.util.Locale;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import androidx.lifecycle.LifecycleOwner;
+import java.util.concurrent.TimeUnit;
+
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
 public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNoteDeletedListener {
 
@@ -50,7 +56,7 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
     private CycleDao cycleDao; // Declarar cycleDao
     private NoteDao noteDao;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
-
+    private WorkManager workManager;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -103,11 +109,34 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
             List<Note> notesDB = noteDao.getAllNotes();
             NoteConverter.loadNotesIntoMap(dayNotes, notesDB);
 
-            runOnUiThread(this::updateCalendarMarkers);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    updateCalendarMarkers(false); // O true, según lo que necesites
+                }
+            });
         });
+        // Inicializar WorkManager
+        workManager = WorkManager.getInstance(this);
+
+        // Crear canal de notificaciones
+        NotificationHelper.createNotificationChannel(this);
+
+        // Solicitar permiso de notificaciones en Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestNotificationPermission();
+        }
     }
 
-
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                        1);
+            }
+        }
+    }
     private void setupCalendarView() {
         calendarView = findViewById(R.id.calendarView);
 
@@ -139,7 +168,7 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
                 cycleDao.deleteCycle(CycleConverter.toRoomCycle(cycle));
                 runOnUiThread(() -> {
                     cycles.remove(cycle);
-                    updateCalendarMarkers();
+                    updateCalendarMarkers(false);
                     Toast.makeText(this, "Ciclo eliminado", Toast.LENGTH_SHORT).show();
                 });
             });
@@ -298,7 +327,7 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
                         if (adapter != null) {
                             adapter.updateNotes(dayNotes.get(normalizedDate));
                         }
-                        updateCalendarMarkers();
+                        updateCalendarMarkers(false);
                     });
                 });
             }
@@ -322,7 +351,7 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
             cycles.add(indiceCiclo, newCycle);
             selectedCycle = newCycle;
         }
-        updateCalendarMarkers();
+        updateCalendarMarkers(false);
     }
 
     private void markCycleEnd(Calendar endDate) {
@@ -345,7 +374,7 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
                 Toast.makeText(this, "Ya existe un ciclo en ese rango de fechas", Toast.LENGTH_SHORT).show();
                 cycles.remove(selectedCycle);
                 selectedCycle = null; // Resetear la selección del ciclo
-                updateCalendarMarkers();
+                updateCalendarMarkers(false);
                 return; // Salir del método sin crear o actualizar el ciclo
             }
         }
@@ -360,13 +389,13 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         executor.execute(() -> {
             cycleDao.insertCycle(roomCycle);
             runOnUiThread(() -> {
-                updateCalendarMarkers();
+                updateCalendarMarkers(true);
                 selectedCycle = null; // Reset selección actual
             });
         });
     }
 
-    private void updateCalendarMarkers() {
+    private void updateCalendarMarkers(boolean programarNotificacion) {
         calendarDays.clear();
 
         // Encontrar el último ciclo completado (con fecha de fin)
@@ -403,17 +432,40 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
 
         // Predecir solo después del último ciclo completado
         if (lastCompleteCycle != null) {
-            predictNextCycle(lastCompleteCycle);
+            predictNextCycle(lastCompleteCycle, programarNotificacion);
         }
 
         calendarView.setCalendarDays(calendarDays);
     }
 
-    private void predictNextCycle(Cycle cycle) {
+    private void predictNextCycle(Cycle cycle, boolean programarNotificacion) {
         // Predecir próximo inicio
         Calendar nextPredictedStart = (Calendar) cycle.getStartDate().clone();
         nextPredictedStart.add(Calendar.DAY_OF_MONTH, DEFAULT_CYCLE_LENGTH);
+        System.out.println("Próximo ciclo previsto: " + nextPredictedStart.getTime());
 
+        if (programarNotificacion) {
+            // fecha de notificación
+            Calendar notificationDate = (Calendar) nextPredictedStart.clone();
+            //restar un día
+            notificationDate.add(Calendar.DAY_OF_MONTH, -1);
+            System.out.println("Fecha de notificación: " + notificationDate.getTime());
+
+            // calcular fecha de hoy a las 23:59:59
+            Calendar today = Calendar.getInstance();
+            today.set(Calendar.HOUR_OF_DAY, 23);
+            today.set(Calendar.MINUTE, 59);
+            today.set(Calendar.SECOND, 59);
+            System.out.println("Fecha de hoy: " + today.getTime());
+
+            if (nextPredictedStart.after(today)) {
+                // Cancelar todas las notificaciones pendientes
+                workManager.cancelAllWorkByTag("cycle_notification");
+                // Programar notificación
+                String message = "Tu próximo ciclo está previsto para mañana";
+                scheduleNotification(notificationDate, 16, 0, message);
+            }
+        }
         CalendarDay predictedDay = new CalendarDay(nextPredictedStart);
         predictedDay.setBackgroundResource(R.color.predicted_day);
         predictedDay.setLabelColor(R.color.white);
@@ -429,6 +481,36 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         }
 
         calendarDays.add(predictedDay);
+    }
+
+    private void scheduleNotification(Calendar notificationDate, int hour, int minute, String message) {
+
+        // Crear calendario para la notificación
+        Calendar notificationTime = (Calendar) notificationDate.clone();
+        notificationTime.set(Calendar.HOUR_OF_DAY, hour);
+        notificationTime.set(Calendar.MINUTE, minute);
+        notificationTime.set(Calendar.SECOND, 0);
+
+        System.out.println("Notificación programada para: " + notificationTime.getTime());
+
+        // Calcular el delay hasta la notificación
+        long currentTime = System.currentTimeMillis();
+        long notificationTimeMillis = notificationTime.getTimeInMillis();
+        long initialDelay = Math.max(0, notificationTimeMillis - currentTime);
+
+        // Crear la solicitud de trabajo
+        Data inputData = new Data.Builder()
+                .putLong("notification_time", notificationTimeMillis)
+                .putString("notification_message", message)
+                .build();
+
+        OneTimeWorkRequest notificationWork = new OneTimeWorkRequest.Builder(NotificationWorker.class)
+                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+                .setInputData(inputData)
+                .addTag("cycle_notification")
+                .build();
+
+        workManager.enqueue(notificationWork);
     }
 
     @Override
