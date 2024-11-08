@@ -5,4 +5,5 @@
     <color name="period_day">#FFE91E63</color>
     <color name="predicted_day">#FF9C27B0</color>
     <color name="red">#FF0000</color>
+    <color name="ongoing_day">#D3ADBC</color>
 </resources>

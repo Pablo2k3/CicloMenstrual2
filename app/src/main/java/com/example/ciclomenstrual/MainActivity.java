@@ -59,14 +59,15 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
     private NoteDao noteDao;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private WorkManager workManager;
-    Calendar nextPredictedDay;
+    private Calendar nextPredictedDay;
+    private static final int ONGOING_CYCLE_DAYS = 7;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         // Borra la base de datos
-        //this.deleteDatabase("app_database");
+        this.deleteDatabase("app_database");
         //
         // Obtener una instancia de AppDatabase
         db = AppDatabase.getInstance(this);
@@ -412,6 +413,20 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         nextPredictedDay = null;
         calendarDays.clear();
 
+        Drawable alertaNota = CalendarUtils.getDrawableText(this, "\uD83D\uDCDD", null, R.color.black, 13); // Ajusta el color y tamaño según tus preferencias
+        Drawable alertIcon = CalendarUtils.getDrawableText(this, "⚠\uFE0F", null, R.color.red, 13); // Ajusta el color y tamaño según tus preferencias
+
+        // Crea un LayerDrawable con los iconos
+        LayerDrawable dobleIcono = new LayerDrawable(new Drawable[]{
+                CalendarUtils.getDrawableText(this, "\uD83D\uDCDD", null, R.color.black, 10),
+                CalendarUtils.getDrawableText(this, "⚠\uFE0F", null, R.color.red, 10)
+        });
+
+        // Ajusta la posición de los iconos
+        dobleIcono.setLayerInset(1, 0, 0, 40, 0);
+        dobleIcono.setLayerInset(0, 40, 0, 0, 0);
+
+
         // Encontrar el último ciclo completado (con fecha de fin)
         Cycle lastCompleteCycle = null;
         if (!cycles.isEmpty()){
@@ -430,6 +445,9 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
                         CalendarDay day = new CalendarDay((Calendar) currentDate.clone());
                         day.setBackgroundResource(R.color.period_day);
                         day.setLabelColor(R.color.white);
+                        if (dayNotes.containsKey(day.getCalendar()) && !Objects.requireNonNull(dayNotes.get(day.getCalendar())).isEmpty()) {
+                            day.setImageDrawable(alertaNota);
+                        }
                         calendarDays.add(day);
 
                         currentDate.add(Calendar.DAY_OF_MONTH, 1);
@@ -439,7 +457,26 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
                     CalendarDay day = new CalendarDay((Calendar) cycle.getStartDate().clone());
                     day.setBackgroundResource(R.color.period_day);
                     day.setLabelColor(R.color.white);
+                    if (dayNotes.containsKey(day.getCalendar()) && !Objects.requireNonNull(dayNotes.get(day.getCalendar())).isEmpty()) {
+                        day.setImageDrawable(alertaNota);
+                    }
                     calendarDays.add(day);
+                    Calendar currentDate = (Calendar) cycle.getStartDate().clone();
+                    currentDate.add(Calendar.DAY_OF_MONTH, 1);
+                    Calendar endDate = cycle.getEndDate();
+                    Calendar today = Calendar.getInstance();
+                    if (isOnGoingCycle(cycle)) {
+                        while (!currentDate.after(today)) {
+                            CalendarDay day2 = new CalendarDay((Calendar) currentDate.clone());
+                            day2.setBackgroundResource(R.color.ongoing_day);
+                            day2.setLabelColor(R.color.white);
+                            if (dayNotes.containsKey(day2.getCalendar()) && !Objects.requireNonNull(dayNotes.get(day2.getCalendar())).isEmpty()) {
+                                day2.setImageDrawable(alertaNota);
+                            }
+                            calendarDays.add(day2);
+                            currentDate.add(Calendar.DAY_OF_MONTH, 1);
+                        }
+                    }
                 }
             }
         }
@@ -449,24 +486,16 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
             nextPredictedDay = predictNextCycle(lastCompleteCycle, programarNotificacion);
         }
 
-        Drawable alertaNota = CalendarUtils.getDrawableText(this, "\uD83D\uDCDD", null, R.color.black, 13); // Ajusta el color y tamaño según tus preferencias
-        Drawable alertIcon = CalendarUtils.getDrawableText(this, "⚠\uFE0F", null, R.color.red, 13); // Ajusta el color y tamaño según tus preferencias
 
-        // Crea un LayerDrawable con los iconos
-        LayerDrawable dobleIcono = new LayerDrawable(new Drawable[]{
-                CalendarUtils.getDrawableText(this, "\uD83D\uDCDD", null, R.color.black, 10),
-                CalendarUtils.getDrawableText(this, "⚠\uFE0F", null, R.color.red, 10)
-        });
-
-        // Ajusta la posición de los iconos
-        dobleIcono.setLayerInset(1, 0, 0, 40, 0);
-        dobleIcono.setLayerInset(0, 40, 0, 0, 0);
 
         if(nextPredictedDay != null) {
             // Marcar el próximo ciclo
             CalendarDay predictedDay = new CalendarDay(nextPredictedDay);
             predictedDay.setBackgroundResource(R.color.predicted_day);
             predictedDay.setLabelColor(R.color.white);
+            if (dayNotes.containsKey(predictedDay.getCalendar()) && !Objects.requireNonNull(dayNotes.get(predictedDay.getCalendar())).isEmpty()) {
+                predictedDay.setImageDrawable(alertaNota);
+            }
             calendarDays.add(predictedDay);
 
             // Verificar si la fecha predicha es anterior a la fecha actual
@@ -517,7 +546,7 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
                 workManager.cancelAllWorkByTag("cycle_notification");
                 // Programar notificación
                 String message = "Tu próximo ciclo está previsto para mañana";
-                scheduleNotification(notificationDate, 1, 0, message);
+                scheduleNotification(notificationDate, 8, 15, message);
             }
         }
 
@@ -552,6 +581,21 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
                 .build();
 
         workManager.enqueue(notificationWork);
+    }
+
+    private boolean isOnGoingCycle(Cycle cycle) {
+        if (cycle == null || cycle.getStartDate() == null || cycle.getEndDate() != null) {
+            return false;
+        }
+        //Comprobamos que el ciclo sea el último
+        if (cycles.indexOf(cycle) != cycles.size() - 1) {
+            return false;
+        }
+        Calendar currentDate = Calendar.getInstance();
+        Calendar cycleStartDate = cycle.getStartDate();
+        long daysSinceStart = TimeUnit.MILLISECONDS.toDays(currentDate.getTimeInMillis() - cycleStartDate.getTimeInMillis());
+
+        return daysSinceStart < ONGOING_CYCLE_DAYS;
     }
 
     @Override
