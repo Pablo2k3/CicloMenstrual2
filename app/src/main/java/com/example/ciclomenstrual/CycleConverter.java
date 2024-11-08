@@ -1,16 +1,19 @@
 package com.example.ciclomenstrual;
 
-import com.example.ciclomenstrual.database.Cycle; // Importar la entidad de Room
 
+import com.example.ciclomenstrual.database.RoomCycle;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class CycleConverter {
 
-    public static com.example.ciclomenstrual.Cycle fromRoomCycle(Cycle roomCycle) {
+    public static Cycle fromRoomCycle(RoomCycle roomCycle) {
         if (roomCycle == null) {
             return null;
         }
 
-        com.example.ciclomenstrual.Cycle cycle = new com.example.ciclomenstrual.Cycle();
+        Cycle cycle = new Cycle();
         if (roomCycle.getStartDate() != null) {
             cycle.setStartDate(roomCycle.getStartDate());
         }
@@ -22,20 +25,37 @@ public class CycleConverter {
         return cycle;
     }
 
-    public static com.example.ciclomenstrual.database.Cycle toRoomCycle(com.example.ciclomenstrual.Cycle cycle) {
+    public static RoomCycle toRoomCycle(Cycle cycle) {
         if (cycle == null) {
             return null;
         }
 
-        com.example.ciclomenstrual.database.Cycle roomCycle = new com.example.ciclomenstrual.database.Cycle();
+        RoomCycle roomCycle = new RoomCycle();
         if (cycle.getStartDate() != null) {
             roomCycle.setStartDate(cycle.getStartDate().getTimeInMillis());
         }
         if (cycle.getEndDate() != null) {
             roomCycle.setEndDate(cycle.getEndDate().getTimeInMillis());
         }
-        // ... copiar otros campos si los tienes ...
-
         return roomCycle;
     }
+
+    // creamos los métodos para convertir lista de roomCycle a lista de Cycle y al revés
+    public static List<Cycle> fromRoomCycles(List<RoomCycle> roomCycles) {
+        List<Cycle> cycles = new ArrayList<>();
+        for (RoomCycle roomCycle : roomCycles) {
+            cycles.add(fromRoomCycle(roomCycle));
+        }
+        return cycles;
+    }
+    // y al contrario
+    public static List<RoomCycle> toRoomCycles(List<Cycle> cycles) {
+        List<RoomCycle> roomCycles = new ArrayList<>();
+        for (Cycle cycle : cycles) {
+            roomCycles.add(toRoomCycle(cycle));
+        }
+        return roomCycles;
+    }
+
+
 }

@@ -8,7 +8,7 @@ import java.util.Calendar;
 import java.util.GregorianCalendar;
 
 @Entity(tableName = "cycles")
-public class Cycle {
+public class RoomCycle {
     @PrimaryKey
     @ColumnInfo(name = "start_date")
     public long startDate;

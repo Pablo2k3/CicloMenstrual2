@@ -23,9 +23,11 @@ import com.applandeo.materialcalendarview.CalendarUtils;
 import com.applandeo.materialcalendarview.CalendarView;
 import com.applandeo.materialcalendarview.CalendarDay;
 import com.example.ciclomenstrual.database.AppDatabase;
+
 import com.example.ciclomenstrual.database.CycleDao;
 import com.example.ciclomenstrual.database.Note;
 import com.example.ciclomenstrual.database.NoteDao;
+import com.example.ciclomenstrual.database.RoomCycle;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.text.SimpleDateFormat;
@@ -66,8 +68,8 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        // Borra la base de datos
-        this.deleteDatabase("app_database");
+        // Borra la base de datos, descomentar para pruebas
+        //this.deleteDatabase("app_database");
         //
         // Obtener una instancia de AppDatabase
         db = AppDatabase.getInstance(this);
@@ -105,9 +107,14 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
 
         // Cargar tanto los ciclos como las notas
         executor.execute(() -> {
-            List<com.example.ciclomenstrual.database.Cycle> cyclesDB = cycleDao.getAllCycles();
-            for (com.example.ciclomenstrual.database.Cycle cycleDB : cyclesDB) {
-                cycles.add(CycleConverter.fromRoomCycle(cycleDB));
+            List<RoomCycle> cyclesDB = cycleDao.getAllCycles();
+            cycles.addAll(CycleConverter.fromRoomCycles(cyclesDB));
+            // si el último ciclo no tiene fecha de fin, seleccionarlo
+            if (!cycles.isEmpty()) {
+                Cycle lastCycle = cycles.get(cycles.size() - 1);
+                if (lastCycle.getEndDate() == null) {
+                    selectedCycle = lastCycle;
+                }
             }
 
             // Cargar notas
@@ -349,9 +356,20 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         builder.show();
     }
     private void markCycleStart(Calendar startDate) {
+        // si el inicio es posterior a hoy, error
+        if (startDate.after(Calendar.getInstance())) {
+            Toast.makeText(this, "La fecha de inicio no puede ser posterior a hoy", Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (selectedCycle != null) {
-            // Actualizar la fecha de inicio del ciclo existente
-            selectedCycle.setStartDate(startDate);
+            // borramos el ciclo
+            cycles.remove(selectedCycle);
+            // lo borramos de base de datos
+            executor.execute(() -> {
+                cycleDao.deleteCycleByStartDate(startDate.getTimeInMillis());
+            });
+            selectedCycle = null;
+            markCycleStart(startDate);
         } else {
             // Crear un nuevo ciclo
             Cycle newCycle = new Cycle(startDate, null);
@@ -363,11 +381,22 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
             }
             cycles.add(indiceCiclo, newCycle);
             selectedCycle = newCycle;
+            if (isOnGoingCycle(newCycle)){
+                //guardar en base de datos
+                executor.execute(() -> {
+                    cycleDao.insertCycle(CycleConverter.toRoomCycle(newCycle));
+                });
+            }
         }
         updateCalendarMarkers(false);
     }
 
     private void markCycleEnd(Calendar endDate) {
+        //si la fecha de fin es posterior a hoy, error
+        if (endDate.after(Calendar.getInstance())) {
+            Toast.makeText(this, "La fecha de fin no puede ser posterior a hoy", Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (selectedCycle == null || selectedCycle.getStartDate() == null) {
             Toast.makeText(this, "Por favor, marca primero el inicio del ciclo", Toast.LENGTH_SHORT).show();
             return;
@@ -396,11 +425,17 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         selectedCycle.setEndDate(endDate);
 
         // Convertir a entidad de Room
-        com.example.ciclomenstrual.database.Cycle roomCycle = CycleConverter.toRoomCycle(selectedCycle);
+        RoomCycle roomCycle = CycleConverter.toRoomCycle(selectedCycle);
 
         // Insertar en la base de datos usando executor
         executor.execute(() -> {
-            cycleDao.insertCycle(roomCycle);
+            // si el ciclo existe, actualizarlo
+            if (cycleDao.getCycleByStartDate(selectedCycle.getStartDate().getTimeInMillis()) != null) {
+                cycleDao.updateEndDate(selectedCycle.getStartDate().getTimeInMillis(), selectedCycle.getEndDate().getTimeInMillis());
+            } else {
+                // si no existe, insertarlo
+                cycleDao.insertCycle(roomCycle);
+            }
             runOnUiThread(() -> {
                 boolean notificar = cycles.indexOf(selectedCycle) == cycles.size() - 1;
                 updateCalendarMarkers(notificar);

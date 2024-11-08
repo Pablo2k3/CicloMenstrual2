@@ -6,7 +6,7 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import android.content.Context;
 
-@Database(entities = {Cycle.class, Note.class}, version = 1)
+@Database(entities = {RoomCycle.class, Note.class}, version = 1)
 public abstract class AppDatabase extends RoomDatabase {
     public abstract CycleDao cycleDao();
     public abstract NoteDao noteDao();

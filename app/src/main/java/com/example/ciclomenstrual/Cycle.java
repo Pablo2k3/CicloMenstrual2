@@ -35,11 +35,8 @@ public class Cycle {
         return !date.before(startDate) && !date.after(endDate);
     }
 
-    public static Cycle fromRoomCycle(com.example.ciclomenstrual.database.Cycle roomCycle) {
-        Cycle cycle = new Cycle();
-        cycle.startDate = roomCycle.getStartDate();
-        cycle.endDate = roomCycle.getEndDate();
-        // ... copiar otros campos ...
-        return cycle;
+    //método que me permita ordenar los ciclos por fecha de inicio si en la lista hago un .sort()
+    public int compareTo(Cycle cycle) {
+        return startDate.compareTo(cycle.getStartDate());
     }
 }
