@@ -22,21 +22,17 @@ import com.applandeo.materialcalendarview.CalendarDay;
 import com.applandeo.materialcalendarview.CalendarUtils;
 import com.applandeo.materialcalendarview.CalendarView;
 import com.example.ciclomenstrual.DayNotesManager.RemovedNote;
-import com.example.ciclomenstrual.database.AppDatabase;
-import com.example.ciclomenstrual.database.CycleDao;
-import com.example.ciclomenstrual.database.Note;
-import com.example.ciclomenstrual.database.NoteDao;
 import com.example.ciclomenstrual.database.RoomCycle;
 import com.example.ciclomenstrual.NotificationHelper;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
+import androidx.lifecycle.ViewModelProvider;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNoteDeletedListener {
 
@@ -50,10 +46,7 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
     private DayNotesManager dayNotesManager;
     private NotesAdapter adapter;
     private Calendar selectedDate;
-    private AppDatabase db;
-    private CycleDao cycleDao;
-    private NoteDao noteDao;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private MainViewModel viewModel;
     private CycleNotificationScheduler notificationScheduler;
     private Calendar nextPredictedDay;
 
@@ -62,13 +55,32 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        db = AppDatabase.getInstance(this);
-        cycleDao = db.cycleDao();
-        noteDao = db.noteDao();
+        viewModel = new ViewModelProvider(this).get(MainViewModel.class);
 
         dayNotesManager = new DayNotesManager();
         setupCalendarView();
         setupNotesList();
+
+        viewModel.getCycles().observe(this, cycles -> {
+            cycleStore.setInitialCycles(cycles);
+            updateCalendarMarkers(false);
+        });
+
+        viewModel.getNotes().observe(this, notes -> {
+            dayNotesManager.loadFromEntities(notes);
+            if (selectedDate != null) {
+                adapter.updateNotes(dayNotesManager.getNotesForDate(selectedDate));
+            }
+            updateCalendarMarkers(false);
+        });
+
+        viewModel.getPredictedNextCycle().observe(this, prediction -> {
+            // Prediction is handled inside updateCalendarMarkers via buildNextPrediction
+            // but we can also use this if we want to separate logic.
+            // For now, updateCalendarMarkers calls buildNextPrediction internally using
+            // cycleStore.
+            // So we just trigger updateCalendarMarkers when cycles change.
+        });
 
         FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(v -> {
@@ -80,7 +92,7 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
             }
         });
 
-        loadInitialData();
+        // loadInitialData removed, handled by ViewModel init
         notificationScheduler = new CycleNotificationScheduler(this);
         NotificationHelper.createNotificationChannel(this);
 
@@ -94,27 +106,18 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         adapter = new NotesAdapter(new ArrayList<>(), this);
         notesRecyclerView.setAdapter(adapter);
         notesRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        DividerItemDecoration decoration = new DividerItemDecoration(notesRecyclerView.getContext(), LinearLayoutManager.VERTICAL);
+        DividerItemDecoration decoration = new DividerItemDecoration(notesRecyclerView.getContext(),
+                LinearLayoutManager.VERTICAL);
         notesRecyclerView.addItemDecoration(decoration);
     }
 
-    private void loadInitialData() {
-        executor.execute(() -> {
-            List<RoomCycle> cyclesDB = cycleDao.getAllCycles();
-            cycleStore.setInitialCycles(CycleConverter.fromRoomCycles(cyclesDB));
-
-            List<Note> notesDB = noteDao.getAllNotes();
-            dayNotesManager.loadFromEntities(notesDB);
-
-            runOnUiThread(() -> updateCalendarMarkers(false));
-        });
-    }
+    // loadInitialData removed
 
     private void requestNotificationPermission() {
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this,
+                android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
-                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                    new String[] { android.Manifest.permission.POST_NOTIFICATIONS },
                     1);
         }
     }
@@ -143,18 +146,12 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         if (cycle == null) {
             return;
         }
-        executor.execute(() -> {
-            cycleDao.deleteCycle(CycleConverter.toRoomCycle(cycle));
-            runOnUiThread(() -> {
-                boolean wasLastCycle = cycleStore.isLastCycle(cycle);
-                cycleStore.removeCycle(cycle);
-                if (wasLastCycle) {
-                    notificationScheduler.cancelAllNotifications();
-                }
-                updateCalendarMarkers(wasLastCycle);
-                Toast.makeText(this, "Ciclo eliminado", Toast.LENGTH_SHORT).show();
-            });
-        });
+        viewModel.deleteCycle(cycle);
+        boolean wasLastCycle = cycleStore.isLastCycle(cycle);
+        if (wasLastCycle) {
+            notificationScheduler.cancelAllNotifications();
+        }
+        Toast.makeText(this, "Ciclo eliminado", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -167,15 +164,7 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
             return;
         }
         selectedDate = removedNote.getDate();
-        executor.execute(() -> {
-            noteDao.deleteNoteByDateAndContent(
-                    NoteConverter.dateToTimestamp(removedNote.getDate()),
-                    removedNote.getContent());
-            runOnUiThread(() -> {
-                adapter.updateNotes(dayNotesManager.getNotesForDate(selectedDate));
-                updateCalendarMarkers(false);
-            });
-        });
+        viewModel.deleteNote(selectedDate, removedNote.getContent());
     }
 
     private void showDayOptionsDialog(CalendarDay clickedDay) {
@@ -251,16 +240,8 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
             String noteContent = input.getText().toString();
             if (!noteContent.trim().isEmpty()) {
                 Calendar normalizedDate = dayNotesManager.normalize(selectedCalendar);
-                Note newNote = new Note(NoteConverter.dateToTimestamp(normalizedDate), noteContent);
+                viewModel.addNote(normalizedDate, noteContent);
                 selectedDate = (Calendar) normalizedDate.clone();
-                executor.execute(() -> {
-                    noteDao.insert(newNote);
-                    runOnUiThread(() -> {
-                        dayNotesManager.addNote(normalizedDate, noteContent);
-                        adapter.updateNotes(dayNotesManager.getNotesForDate(normalizedDate));
-                        updateCalendarMarkers(false);
-                    });
-                });
             }
         });
         builder.setNegativeButton("Cancelar", (dialog, which) -> dialog.cancel());
@@ -276,21 +257,23 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
 
         Cycle existingSelectedCycle = cycleStore.getSelectedCycle();
         if (existingSelectedCycle != null) {
-            cycleStore.removeCycle(existingSelectedCycle);
-            executor.execute(() ->
-                    cycleDao.deleteCycleByStartDate(existingSelectedCycle.getStartDate().getTimeInMillis()));
+            viewModel.deleteCycle(existingSelectedCycle);
             cycleStore.clearSelection();
             markCycleStart(startDate);
             return;
         }
 
         Cycle newCycle = new Cycle((Calendar) startDate.clone(), null);
-        cycleStore.addCycleSorted(newCycle);
-        if (cycleStore.isLastCycle(newCycle)
-                && CycleCalculator.isOngoingCycle(newCycle, ONGOING_CYCLE_DAYS, Calendar.getInstance())) {
-            executor.execute(() -> cycleDao.insertCycle(CycleConverter.toRoomCycle(newCycle)));
+
+        // Check if it's the last cycle (conceptually)
+        Cycle last = cycleStore.getLastCycle();
+        boolean isLast = last == null || newCycle.getStartDate().after(last.getStartDate());
+
+        if (isLast && CycleCalculator.isOngoingCycle(newCycle, ONGOING_CYCLE_DAYS, Calendar.getInstance())) {
+            viewModel.addCycle(newCycle);
+        } else {
+            Toast.makeText(this, "Solo se pueden añadir ciclos recientes", Toast.LENGTH_SHORT).show();
         }
-        updateCalendarMarkers(false);
     }
 
     private void markCycleEnd(Calendar endDate) {
@@ -312,29 +295,14 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
 
         if (cycleStore.hasOverlappingCycle(selectedCycle, endDate)) {
             Toast.makeText(this, "Ya existe un ciclo en ese rango de fechas", Toast.LENGTH_SHORT).show();
-            cycleStore.removeCycle(selectedCycle);
+            viewModel.deleteCycle(selectedCycle);
             cycleStore.clearSelection();
-            updateCalendarMarkers(false);
             return;
         }
 
         selectedCycle.setEndDate((Calendar) endDate.clone());
-        RoomCycle roomCycle = CycleConverter.toRoomCycle(selectedCycle);
-
-        executor.execute(() -> {
-            RoomCycle existing = cycleDao.getCycleByStartDate(selectedCycle.getStartDate().getTimeInMillis());
-            if (existing != null) {
-                cycleDao.updateEndDate(selectedCycle.getStartDate().getTimeInMillis(),
-                        selectedCycle.getEndDate().getTimeInMillis());
-            } else {
-                cycleDao.insertCycle(roomCycle);
-            }
-            runOnUiThread(() -> {
-                boolean shouldNotify = cycleStore.isLastCycle(selectedCycle);
-                updateCalendarMarkers(shouldNotify);
-                cycleStore.clearSelection();
-            });
-        });
+        viewModel.updateCycle(selectedCycle);
+        cycleStore.clearSelection();
     }
 
     private void updateCalendarMarkers(boolean scheduleNotification) {
@@ -345,7 +313,7 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
         Drawable noteOnlyDrawable = CalendarUtils.getDrawableText(this, "\uD83D\uDCDD", null, R.color.black, 13);
         Drawable alertIcon = CalendarUtils.getDrawableText(this, "⚠\uFE0F", null, R.color.red, 13);
 
-        LayerDrawable noteAndAlert = new LayerDrawable(new Drawable[]{
+        LayerDrawable noteAndAlert = new LayerDrawable(new Drawable[] {
                 CalendarUtils.getDrawableText(this, "\uD83D\uDCDD", null, R.color.black, 10),
                 CalendarUtils.getDrawableText(this, "⚠\uFE0F", null, R.color.red, 10)
         });
@@ -455,6 +423,5 @@ public class MainActivity extends AppCompatActivity implements NotesAdapter.OnNo
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        executor.shutdown();
     }
 }
