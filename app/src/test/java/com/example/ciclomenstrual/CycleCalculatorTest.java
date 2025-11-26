@@ -2,6 +2,7 @@ package com.example.ciclomenstrual;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -49,6 +50,22 @@ public class CycleCalculatorTest {
         assertEquals(59, endOfDay.get(Calendar.MINUTE));
         assertEquals(59, endOfDay.get(Calendar.SECOND));
         assertEquals(999, endOfDay.get(Calendar.MILLISECOND));
+    }
+
+    @Test
+    public void isDateInFuture_returnsTrueForFutureDate() {
+        Calendar now = Calendar.getInstance();
+        Calendar future = (Calendar) now.clone();
+        future.add(Calendar.DAY_OF_MONTH, 1);
+
+        assertTrue(CycleCalculator.isDateInFuture(future, now));
+        assertFalse(CycleCalculator.isDateInFuture(now, future));
+    }
+
+    @Test
+    public void predictNextCycleStart_handlesNullCycle() {
+        assertNull(CycleCalculator.predictNextCycleStart(null, 28));
+        assertNull(CycleCalculator.predictNextCycleStart(new Cycle(null, null), 28));
     }
 
     private Calendar calendar(int year, int month, int day) {

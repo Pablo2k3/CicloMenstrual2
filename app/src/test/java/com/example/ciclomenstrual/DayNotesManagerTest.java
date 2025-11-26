@@ -1,12 +1,16 @@
 package com.example.ciclomenstrual;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+
+import com.example.ciclomenstrual.database.Note;
 
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Iterator;
 import java.util.List;
@@ -64,5 +68,47 @@ public class DayNotesManagerTest {
         returnedDate.add(Calendar.DAY_OF_MONTH, 1);
 
         assertTrue(manager.hasNotes(date));
+    }
+
+    @Test
+    public void loadFromEntities_populatesMapCorrectly() {
+        List<Note> notes = new ArrayList<>();
+        Note note = new Note(calendar(2024, Calendar.MAY, 1).getTimeInMillis(), "test note");
+        notes.add(note);
+
+        manager.loadFromEntities(notes);
+
+        assertTrue(manager.hasNotes(calendar(2024, Calendar.MAY, 1)));
+        assertEquals("test note", manager.getNotesForDate(calendar(2024, Calendar.MAY, 1)).get(0));
+    }
+
+    @Test
+    public void hasNotes_returnsTrueIfNotesExist() {
+        Calendar date = calendar(2024, Calendar.JUNE, 1);
+        manager.addNote(date, "note");
+        assertTrue(manager.hasNotes(date));
+        assertFalse(manager.hasNotes(calendar(2024, Calendar.JUNE, 2)));
+    }
+
+    @Test
+    public void isEmpty_returnsTrueIfNoNotes() {
+        Calendar date = calendar(2024, Calendar.JULY, 1);
+        assertTrue(manager.isEmpty(date));
+        manager.addNote(date, "note");
+        assertFalse(manager.isEmpty(date));
+    }
+
+    @Test
+    public void addNote_handlesNullsGracefully() {
+        manager.addNote(null, "note");
+        manager.addNote(Calendar.getInstance(), null);
+        // Should not crash
+    }
+
+    private Calendar calendar(int year, int month, int day) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.MILLISECOND, 0);
+        calendar.set(year, month, day, 0, 0, 0);
+        return calendar;
     }
 }
