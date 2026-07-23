@@ -9,11 +9,12 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        google() // Primero
-        mavenCentral() // Luego
+        google()
+        mavenCentral()
     }
 }
 
 rootProject.name = "CicloMenstrual"
-include(":app") // Incluye otros módulos si los tienes
+include(":app")

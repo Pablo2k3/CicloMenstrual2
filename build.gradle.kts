@@ -2,11 +2,6 @@
 
 plugins {
     alias(libs.plugins.android.application) apply false
-}
-
-allprojects {
-    repositories {
-        google() // Asegúrate de que esta línea esté presente solo aquí
-        mavenCentral()
-    }
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.kapt) apply false
 }
