@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">CicloMenstrual</string>
+    <string name="app_name">Ciclo Monstrual</string>
     <string name="delete_cycle">Eliminar ciclo</string>
     <string name="change_cycle_start">Cambiar inicio de ciclo</string>
     <string name="add_event">Añadir evento</string>
