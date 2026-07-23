@@ -42,6 +42,70 @@
             app:todayLabelColor="?attr/colorPrimary"
             app:selectionColor="?attr/colorSecondary"/>
 
+        <TextView
+            android:id="@+id/exactAlarmWarning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="4dp"
+            android:background="#FFFFE0B2"
+            android:padding="8dp"
+            android:text="@string/exact_alarm_warning"
+            android:textColor="@color/black"
+            android:visibility="gone"/>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/pillCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="8dp"
+            android:layout_marginTop="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/pillTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textStyle="bold"
+                    android:textSize="17sp"/>
+
+                <TextView
+                    android:id="@+id/pillStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="end"
+                    android:orientation="horizontal"
+                    style="?android:attr/buttonBarStyle">
+
+                    <Button
+                        android:id="@+id/pillActionButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/mark_taken"
+                        style="?android:attr/buttonBarButtonStyle"/>
+
+                    <Button
+                        android:id="@+id/newTreatmentButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/new_treatment"
+                        style="?android:attr/buttonBarButtonStyle"/>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/notesRecyclerView"
             android:layout_width="match_parent"

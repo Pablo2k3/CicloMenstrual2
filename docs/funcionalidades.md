@@ -20,6 +20,32 @@ acciones correspondientes:
 
 Cada nota de la lista puede eliminarse después de confirmar la operación.
 
+## Pastillas anticonceptivas
+
+La configuración solicita la fecha de la pastilla 1. La aplicación calcula una
+pauta continua de 28 días: 21 activas y 7 de placebo. Si la fecha ya pasó, las
+activas anteriores se inicializan como tomadas y los placebos como automáticos.
+
+El número y estado de la pastilla aparecen en la tarjeta inferior al seleccionar
+un día. Para mantener el calendario legible, las pastillas tomadas, próximas y de
+placebo no añaden símbolos a las celdas. El número del día se muestra en naranja
+cuando corresponde a una fecha pasada con una pastilla activa omitida.
+
+Las activas de hoy o anteriores pueden marcarse o desmarcarse; las futuras no
+pueden adelantarse.
+
+«Comenzar nuevo tratamiento» cierra el anterior el día previo y conserva su
+historial.
+
+## Avisos de pastilla
+
+Una activa avisa a las 14:00 y cada 15 minutos hasta las 15:45. La acción
+«Tomada» confirma desde la notificación. A las 16:00 se cancela el aviso y queda
+como omitida. Los placebos producen un único aviso y se registran automáticamente.
+
+Android 12 o posterior requiere acceso especial a «Alarmas y recordatorios». Sin
+él se usa una alarma aproximada y se muestra una advertencia.
+
 ## Leyenda del calendario
 
 | Apariencia | Significado |

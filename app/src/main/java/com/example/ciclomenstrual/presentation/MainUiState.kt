@@ -3,6 +3,9 @@ package com.example.ciclomenstrual.presentation
 import com.example.ciclomenstrual.domain.model.CalendarMarker
 import com.example.ciclomenstrual.domain.model.Cycle
 import com.example.ciclomenstrual.domain.model.Note
+import com.example.ciclomenstrual.domain.model.ContraceptiveRegimen
+import com.example.ciclomenstrual.domain.model.PillDay
+import com.example.ciclomenstrual.domain.model.PillIntake
 
 data class MainUiState(
     val isLoading: Boolean = true,
@@ -13,6 +16,12 @@ data class MainUiState(
     val markers: List<CalendarMarker> = emptyList(),
     val selectedCycle: Cycle? = null,
     val nextPredictedDay: Long? = null,
+    val regimens: List<ContraceptiveRegimen> = emptyList(),
+    val activeRegimen: ContraceptiveRegimen? = null,
+    val pillIntakes: List<PillIntake> = emptyList(),
+    val pillDays: List<PillDay> = emptyList(),
+    val selectedPillDay: PillDay? = null,
+    val exactAlarmAvailable: Boolean = true,
 )
 
 sealed interface MainUiEvent {

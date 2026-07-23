@@ -5,6 +5,7 @@
 - Kotlin idiomático, modelos inmutables y dependencias dirigidas hacia `domain`.
 - Ninguna regla de negocio ni acceso a datos dentro de Activities, adapters o
   Workers.
+- La secuencia y el siguiente aviso se calculan en clases puras con pruebas.
 - Los DAO son suspendibles; no se crean executors manuales.
 - Los textos visibles pertenecen a recursos, salvo contenido de notificaciones
   que deba ser compatible con trabajos ya encolados.
@@ -24,7 +25,7 @@
 Ejecutar pruebas unitarias en cada cambio. Antes de publicar, ejecutar también
 pruebas instrumentadas, `lintDebug` y `assembleRelease`. La validación manual debe
 cubrir recreación de actividad, cambio de zona horaria, cambio de año, permiso de
-notificaciones denegado y apertura con una base creada por la versión Java.
+notificaciones/alarma exacta denegado, reinicio y apertura con una base v1.
 
 ## Entrega incremental
 

@@ -14,6 +14,12 @@
 | F10 | Programar recordatorio | `CycleReminderScheduler` | Prueba WorkManager pendiente |
 | F11 | Conservar esquema versión 1 | entidades `data.local` | Prueba de migración pendiente |
 | F12 | Solicitar permiso Android 13+ | `MainActivity` | Prueba instrumentada pendiente |
+| F13 | Calcular pastilla 1–28 | `PillScheduleCalculator` | `PillScheduleCalculatorTest` |
+| F14 | Resolver estados diarios | `PillStatusResolver` | `PillStatusResolverTest` |
+| F15 | Avisar 14:00–15:45 y cerrar 16:00 | `PillReminderPlanner` | `PillReminderPlannerTest` |
+| F16 | Confirmar desde notificación | `PillActionReceiver` | Prueba instrumentada pendiente |
+| F17 | Migrar Room 1→2 | `MIGRATION_1_2` | `AppDatabaseCompatibilityTest` |
+| F18 | Conservar tratamientos | `ContraceptiveRepository` | Prueba de repositorio pendiente |
 
 Las filas marcadas como pendientes requieren un dispositivo/emulador o la
 infraestructura específica indicada antes de considerar una publicación.

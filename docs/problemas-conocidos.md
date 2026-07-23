@@ -12,6 +12,9 @@ Estos comportamientos se conservan para que el refactor no cambie funcionalidad:
   desplazar la representación de datos históricos.
 - Un ciclo incompleto de siete días o más deja de pintarse como activo, pero sigue
   existiendo como ciclo sin finalizar.
+- Sin acceso a alarmas exactas Android puede retrasar los avisos.
+- Algunos fabricantes aplican restricciones de batería adicionales; al abrirse,
+  la aplicación reconcilia tomas omitidas y placebos.
 
 ## Deuda eliminada
 

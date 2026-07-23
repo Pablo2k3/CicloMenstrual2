@@ -4,11 +4,17 @@ import com.example.ciclomenstrual.domain.model.CalendarMarker
 import com.example.ciclomenstrual.domain.model.Cycle
 import com.example.ciclomenstrual.domain.model.MarkerBackground
 import com.example.ciclomenstrual.domain.model.Note
+import com.example.ciclomenstrual.domain.model.PillDay
 
 class CalendarMarkerFactory(
     private val predictionPolicy: CyclePredictionPolicy = FixedCyclePredictionPolicy(),
 ) {
-    fun create(cycles: List<Cycle>, notes: List<Note>, now: Long): Pair<List<CalendarMarker>, Long?> {
+    fun create(
+        cycles: List<Cycle>,
+        notes: List<Note>,
+        now: Long,
+        pillDays: List<PillDay> = emptyList(),
+    ): Pair<List<CalendarMarker>, Long?> {
         val markers = linkedMapOf<Long, CalendarMarker>()
         val notesByDay = notes.groupBy { DateNormalizer.normalize(it.date) }
 
@@ -37,6 +43,9 @@ class CalendarMarkerFactory(
         }
         notesByDay.filterValues { it.isNotEmpty() }.keys.forEach { day ->
             markers[day] = (markers[day] ?: CalendarMarker(day)).copy(hasNote = true)
+        }
+        pillDays.forEach { pill ->
+            markers[pill.date] = (markers[pill.date] ?: CalendarMarker(pill.date)).copy(pillDay = pill)
         }
         return markers.values.toList() to predicted
     }

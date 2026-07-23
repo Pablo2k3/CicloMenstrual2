@@ -7,4 +7,5 @@ data class CalendarMarker(
     val background: MarkerBackground = MarkerBackground.NONE,
     val hasNote: Boolean = false,
     val overduePrediction: Boolean = false,
+    val pillDay: PillDay? = null,
 )

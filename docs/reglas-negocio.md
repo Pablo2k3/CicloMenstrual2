@@ -27,3 +27,16 @@ iguales se eliminan conjuntamente.
 - Ventana visual del calendario: ±6 meses.
 - Duración visual máxima de ciclo incompleto: 7 días.
 - Recordatorio: día anterior a las 08:15.
+
+## Pauta anticonceptiva
+
+- Pauta fija de 21 activas y 7 placebos; después de la 28 continúa la 1.
+- Dosis diaria a las 14:00 en la zona horaria local.
+- Recordatorios activos cada 15 minutos en `[14:00, 16:00)`.
+- A las 16:00 una activa no confirmada queda omitida.
+- Los placebos se registran automáticamente a las 14:00.
+- Solo hoy y fechas pasadas pueden corregirse; los placebos no requieren acción.
+- El calendario solo resalta en naranja las activas omitidas de días anteriores;
+  el número y estado detallados se consultan en la tarjeta del día seleccionado.
+- Un nuevo tratamiento cierra el anterior el día previo y conserva sus tomas.
+- El registro no recomienda qué hacer clínicamente ante una dosis omitida.

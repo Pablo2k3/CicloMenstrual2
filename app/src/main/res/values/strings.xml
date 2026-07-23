@@ -8,4 +8,19 @@
     <string name="mark_cycle_start">Marcar inicio del ciclo</string>
     <string name="mark_cycle_end">Marcar fin del ciclo</string>
     <string name="selected_date">Fecha seleccionada: %s</string>
+    <string name="configure_pills">Configurar pastillas</string>
+    <string name="new_treatment">Comenzar nuevo tratamiento</string>
+    <string name="pill_active">Pastilla %1$d · Activa</string>
+    <string name="pill_placebo">Pastilla %1$d · Placebo</string>
+    <string name="pill_status">Estado: %s</string>
+    <string name="mark_taken">Marcar como tomada</string>
+    <string name="unmark_taken">Desmarcar</string>
+    <string name="exact_alarm_warning">Los avisos de las 14:00 pueden retrasarse. Toca aquí para permitir alarmas exactas.</string>
+    <string name="pill_upcoming_status">Próxima</string>
+    <string name="pill_pending_status">Pendiente</string>
+    <string name="pill_taken_status">Tomada</string>
+    <string name="pill_missed_status">Omitida</string>
+    <string name="pill_placebo_status">Placebo automático</string>
+    <string name="select_pill_one_date">Selecciona la fecha de la pastilla 1</string>
+    <string name="select_day_for_pill">Selecciona un día para ver la pastilla</string>
 </resources>

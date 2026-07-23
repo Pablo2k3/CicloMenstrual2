@@ -6,4 +6,5 @@
     <color name="predicted_day">#FF9C27B0</color>
     <color name="red">#FF0000</color>
     <color name="ongoing_day">#D3ADBC</color>
+    <color name="pill_missed_day">#FFF57C00</color>
 </resources>
