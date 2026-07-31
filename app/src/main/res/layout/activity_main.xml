@@ -36,11 +36,21 @@
             android:layout_marginHorizontal="8dp"
             app:swipeEnabled="false"
             app:type="one_day_picker"
+            app:selectionDisabled="true"
             app:eventsEnabled="true"
             app:headerColor="?attr/colorPrimary"
             app:headerLabelColor="?attr/colorOnPrimary"
             app:todayLabelColor="?attr/colorPrimary"
             app:selectionColor="?attr/colorSecondary"/>
+
+        <TextView
+            android:id="@+id/selectedDayLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="4dp"
+            android:textStyle="bold"
+            android:visibility="gone"/>
 
         <TextView
             android:id="@+id/exactAlarmWarning"

@@ -58,10 +58,18 @@ class MainViewModel(
 
     fun selectDate(date: Long) {
         val normalized = DateNormalizer.normalize(date)
-        mutableState.value = mutableState.value.copy(
+        val state = mutableState.value
+        val selectedDateNotes = state.notes.filter { DateNormalizer.normalize(it.date) == normalized }
+        val selectedPillDay = state.pillDays.firstOrNull { it.date == normalized }
+        if (state.selectedDate == normalized &&
+            state.selectedDateNotes == selectedDateNotes &&
+            state.selectedPillDay == selectedPillDay
+        ) return
+
+        mutableState.value = state.copy(
             selectedDate = normalized,
-            selectedDateNotes = mutableState.value.notes.filter { DateNormalizer.normalize(it.date) == normalized },
-            selectedPillDay = mutableState.value.pillDays.firstOrNull { it.date == normalized },
+            selectedDateNotes = selectedDateNotes,
+            selectedPillDay = selectedPillDay,
         )
     }
 

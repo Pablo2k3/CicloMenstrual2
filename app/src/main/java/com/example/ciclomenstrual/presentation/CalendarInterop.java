@@ -3,7 +3,6 @@ package com.example.ciclomenstrual.presentation;
 import android.content.Context;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
-import androidx.annotation.Nullable;
 
 import com.applandeo.materialcalendarview.CalendarDay;
 import com.applandeo.materialcalendarview.CalendarUtils;
@@ -35,11 +34,6 @@ public final class CalendarInterop {
 
     public static void setBackground(CalendarDay day, int resource) {
         day.setBackgroundResource(resource);
-    }
-
-    @Nullable
-    public static Calendar selectedDate(CalendarView view) {
-        return view.getFirstSelectedDate();
     }
 
     public static void setLabelColor(CalendarDay day, int color) {

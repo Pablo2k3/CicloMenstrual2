@@ -33,6 +33,7 @@ import com.example.ciclomenstrual.databinding.ActivityMainBinding
 import com.example.ciclomenstrual.databinding.DialogDayOptionsBinding
 import com.example.ciclomenstrual.domain.CalendarMarkerFactory
 import com.example.ciclomenstrual.domain.model.CalendarMarker
+import com.example.ciclomenstrual.domain.model.ContraceptiveRegimen
 import com.example.ciclomenstrual.domain.model.Cycle
 import com.example.ciclomenstrual.domain.model.MarkerBackground
 import com.example.ciclomenstrual.domain.model.Note
@@ -40,11 +41,12 @@ import com.example.ciclomenstrual.notifications.NotificationHelper
 import com.example.ciclomenstrual.notifications.WorkManagerCycleReminderScheduler
 import com.example.ciclomenstrual.notifications.AlarmManagerPillReminderScheduler
 import com.example.ciclomenstrual.presentation.MainUiEvent
-import com.example.ciclomenstrual.presentation.MainUiState
 import com.example.ciclomenstrual.presentation.MainViewModel
 import com.example.ciclomenstrual.presentation.NotesAdapter
 import com.example.ciclomenstrual.presentation.CalendarInterop
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -103,12 +105,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupActions() {
         binding.fab.setOnClickListener {
-            val date = CalendarInterop.selectedDate(binding.calendarView)
+            val date = viewModel.state.value.selectedDate
             if (date == null) {
                 Toast.makeText(this, "Selecciona un día en el calendario", Toast.LENGTH_SHORT).show()
             } else {
-                viewModel.selectDate(date.timeInMillis)
-                showDayOptions(date.timeInMillis)
+                showDayOptions(date)
             }
         }
         binding.newTreatmentButton.setOnClickListener { confirmNewTreatment() }
@@ -119,15 +120,39 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.state.collect {
-                        notesAdapter.submitList(it.selectedDateNotes)
-                        renderMarkers(it)
-                        renderPillCard(it)
-                        if (!it.isLoading && it.activeRegimen == null && !onboardingShown) {
-                            onboardingShown = true
-                            showRegimenDatePicker(isInitial = true)
+                    viewModel.state
+                        .map { it.selectedDateNotes }
+                        .distinctUntilChanged()
+                        .collect(notesAdapter::submitList)
+                }
+                launch {
+                    viewModel.state
+                        .map { it.selectedDate }
+                        .distinctUntilChanged()
+                        .collect(::renderSelectedDate)
+                }
+                launch {
+                    viewModel.state
+                        .map { it.markers }
+                        .distinctUntilChanged()
+                        .collect(::renderMarkers)
+                }
+                launch {
+                    viewModel.state
+                        .map { PillCardUiState(it.activeRegimen, it.selectedPillDay, it.exactAlarmAvailable) }
+                        .distinctUntilChanged()
+                        .collect(::renderPillCard)
+                }
+                launch {
+                    viewModel.state
+                        .map { it.isLoading to it.activeRegimen }
+                        .distinctUntilChanged()
+                        .collect { (isLoading, activeRegimen) ->
+                            if (!isLoading && activeRegimen == null && !onboardingShown) {
+                                onboardingShown = true
+                                showRegimenDatePicker(isInitial = true)
+                            }
                         }
-                    }
                 }
                 launch {
                     viewModel.events.collect { event ->
@@ -141,8 +166,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderMarkers(state: MainUiState) {
-        binding.calendarView.setCalendarDays(state.markers.map(::toCalendarDay))
+    private fun renderMarkers(markers: List<CalendarMarker>) {
+        binding.calendarView.setCalendarDays(markers.map(::toCalendarDay))
+    }
+
+    private fun renderSelectedDate(date: Long?) {
+        binding.selectedDayLabel.visibility = if (date == null) View.GONE else View.VISIBLE
+        binding.selectedDayLabel.text = date?.let {
+            getString(
+                R.string.selected_date,
+                SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it),
+            )
+        }.orEmpty()
     }
 
     private fun toCalendarDay(marker: CalendarMarker): CalendarDay {
@@ -169,12 +204,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun markerIcon(marker: CalendarMarker): Drawable? {
-        val note = CalendarInterop.textDrawable(this, "📝", R.color.black, 13)
-        val warning = CalendarInterop.textDrawable(this, "⚠️", R.color.red, 13)
+        if (!marker.hasNote && !marker.overduePrediction) return null
+
         val layers = mutableListOf<Drawable>()
-        if (marker.hasNote) layers += note
-        if (marker.overduePrediction) layers += warning
-        if (layers.isEmpty()) return null
+        if (marker.hasNote) {
+            layers += CalendarInterop.textDrawable(this, "📝", R.color.black, 13)
+        }
+        if (marker.overduePrediction) {
+            layers += CalendarInterop.textDrawable(this, "⚠️", R.color.red, 13)
+        }
         if (layers.size == 1) return layers.single()
         return LayerDrawable(layers.toTypedArray()).apply {
             layers.indices.forEach { index ->
@@ -183,7 +221,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderPillCard(state: MainUiState) {
+    private fun renderPillCard(state: PillCardUiState) {
         binding.exactAlarmWarning.visibility =
             if (state.activeRegimen != null && !state.exactAlarmAvailable) View.VISIBLE else View.GONE
         val day = state.selectedPillDay
@@ -221,6 +259,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    private data class PillCardUiState(
+        val activeRegimen: ContraceptiveRegimen?,
+        val selectedPillDay: PillDay?,
+        val exactAlarmAvailable: Boolean,
+    )
 
     private fun pillStatusText(status: PillDayStatus): String = getString(
         when (status) {
