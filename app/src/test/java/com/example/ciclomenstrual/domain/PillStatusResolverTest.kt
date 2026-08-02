@@ -6,14 +6,17 @@ import com.example.ciclomenstrual.domain.model.PillIntake
 import com.example.ciclomenstrual.domain.model.PillIntakeSource
 import com.example.ciclomenstrual.domain.model.PillIntakeStatus
 import java.util.Calendar
+import java.util.TimeZone
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class PillStatusResolverTest {
-    private val day = Calendar.getInstance().apply {
+    private val day = Calendar.getInstance(TimeZone.getTimeZone(DateNormalizer.REFERENCE_TIME_ZONE_ID)).apply {
         clear()
-        set(2026, Calendar.JULY, 23)
-    }.timeInMillis
+        set(2026, Calendar.JULY, 23, 0, 0, 0)
+    }.timeInMillis.let {
+        DateNormalizer.normalize(it, TimeZone.getTimeZone(DateNormalizer.REFERENCE_TIME_ZONE_ID))
+    }
     private val regimen = ContraceptiveRegimen(id = 1, startDate = day)
     private val calculator = PillScheduleCalculator()
     private val resolver = PillStatusResolver(calculator)

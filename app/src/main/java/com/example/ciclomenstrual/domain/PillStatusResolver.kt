@@ -15,7 +15,7 @@ class PillStatusResolver(
         intake: PillIntake?,
         now: Long,
     ): PillDay? {
-        val day = DateNormalizer.normalize(date)
+        val day = date
         val number = calculator.pillNumber(regimen, day) ?: return null
         val placebo = calculator.isPlacebo(regimen, number)
         val status = when (intake?.status) {
@@ -27,7 +27,7 @@ class PillStatusResolver(
                 val deadline = dose + REMINDER_WINDOW_MILLIS
                 when {
                     placebo && now >= dose -> PillDayStatus.AUTO_PLACEBO
-                    day > DateNormalizer.normalize(now) || now < dose -> PillDayStatus.UPCOMING
+                    day > DateNormalizer.todayKey(now) || now < dose -> PillDayStatus.UPCOMING
                     now < deadline -> PillDayStatus.PENDING
                     else -> PillDayStatus.MISSED
                 }

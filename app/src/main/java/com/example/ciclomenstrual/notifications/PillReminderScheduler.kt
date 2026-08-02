@@ -6,5 +6,6 @@ import com.example.ciclomenstrual.domain.model.PillIntake
 interface PillReminderScheduler {
     fun scheduleNext(regimen: ContraceptiveRegimen, intakes: List<PillIntake>, now: Long)
     fun cancel()
+    fun cancelCurrentNotification()
     fun canScheduleExact(): Boolean
 }

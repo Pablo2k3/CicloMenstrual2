@@ -9,9 +9,8 @@ class RoomNoteRepository(private val dao: NoteDao) : NoteRepository {
     override suspend fun getAll(): List<Note> =
         dao.getAll().map { Note(it.id, it.date, it.content.orEmpty()) }
 
-    override suspend fun insert(note: Note) =
+    override suspend fun insert(note: Note): Long =
         dao.insert(RoomNote(note.id, note.date, note.content))
 
-    override suspend fun deleteByDateAndContent(date: Long, content: String) =
-        dao.deleteByDateAndContent(date, content)
+    override suspend fun deleteById(id: Long) = dao.deleteById(id)
 }

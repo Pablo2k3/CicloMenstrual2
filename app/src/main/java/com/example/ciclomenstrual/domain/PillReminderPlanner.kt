@@ -21,7 +21,7 @@ class PillReminderPlanner(
         intakes: List<PillIntake>,
         now: Long,
     ): PlannedPillAlarm? {
-        val today = DateNormalizer.normalize(now)
+        val today = DateNormalizer.todayKey(now)
         val number = calculator.pillNumber(regimen, today)
             ?: return dosePlan(regimen, regimen.startDate)
         val intake = intakes.firstOrNull { it.regimenId == regimen.id && it.scheduledDate == today }

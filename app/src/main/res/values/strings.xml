@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">Ciclo Monstrual</string>
     <string name="delete_cycle">Eliminar ciclo</string>
+    <string name="cancel">Cancelar</string>
+    <string name="confirm_delete_cycle_title">Eliminar ciclo</string>
+    <string name="confirm_delete_cycle_message">¿Quieres eliminar este ciclo completo? Esta acción no se puede deshacer.</string>
     <string name="change_cycle_start">Cambiar inicio de ciclo</string>
     <string name="add_event">Añadir evento</string>
     <string name="add_note">Añadir nota</string>
@@ -15,7 +18,7 @@
     <string name="pill_status">Estado: %s</string>
     <string name="mark_taken">Marcar como tomada</string>
     <string name="unmark_taken">Desmarcar</string>
-    <string name="exact_alarm_warning">Los avisos de las 14:00 pueden retrasarse. Toca aquí para permitir alarmas exactas.</string>
+    <string name="exact_alarm_warning">Los avisos de la pauta pueden retrasarse. Toca aquí para permitir alarmas exactas.</string>
     <string name="pill_upcoming_status">Próxima</string>
     <string name="pill_pending_status">Pendiente</string>
     <string name="pill_taken_status">Tomada</string>

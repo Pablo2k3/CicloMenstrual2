@@ -40,6 +40,7 @@ class MainViewModel(
     private val pillCalculator: PillScheduleCalculator = PillScheduleCalculator(),
     private val pillStatusResolver: PillStatusResolver = PillStatusResolver(pillCalculator),
     private val now: () -> Long = System::currentTimeMillis,
+    private val startRefreshLoop: Boolean = true,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(MainUiState())
     val state: StateFlow<MainUiState> = mutableState.asStateFlow()
@@ -48,10 +49,12 @@ class MainViewModel(
 
     init {
         load()
-        viewModelScope.launch {
-            while (true) {
-                delay(60_000)
-                refreshDerivedPillState()
+        if (startRefreshLoop) {
+            viewModelScope.launch {
+                while (true) {
+                    delay(60_000)
+                    refreshDerivedPillState()
+                }
             }
         }
     }
@@ -59,7 +62,7 @@ class MainViewModel(
     fun selectDate(date: Long) {
         val normalized = DateNormalizer.normalize(date)
         val state = mutableState.value
-        val selectedDateNotes = state.notes.filter { DateNormalizer.normalize(it.date) == normalized }
+        val selectedDateNotes = state.notes.filter { it.date == normalized }
         val selectedPillDay = state.pillDays.firstOrNull { it.date == normalized }
         if (state.selectedDate == normalized &&
             state.selectedDateNotes == selectedDateNotes &&
@@ -75,7 +78,7 @@ class MainViewModel(
 
     fun startNewRegimen(startDate: Long) = viewModelScope.launch {
         val normalized = DateNormalizer.normalize(startDate)
-        if (normalized > DateNormalizer.normalize(now())) {
+        if (normalized > DateNormalizer.todayKey(now())) {
             message("La fecha de la pastilla 1 no puede ser futura")
             return@launch
         }
@@ -85,13 +88,15 @@ class MainViewModel(
         }
         val draft = ContraceptiveRegimen(startDate = normalized)
         val initial = buildInitialIntakes(draft, now())
+        pillReminderScheduler.cancelCurrentNotification()
         contraceptiveRepository.startRegimen(draft, initial)
         reloadContraceptiveState()
         message("Tratamiento configurado")
     }
 
     fun markPillTaken(day: com.example.ciclomenstrual.domain.model.PillDay) = viewModelScope.launch {
-        if (day.date > DateNormalizer.normalize(now()) || day.isPlacebo) return@launch
+        if (day.date > DateNormalizer.todayKey(now()) || day.isPlacebo) return@launch
+        pillReminderScheduler.cancelCurrentNotification()
         contraceptiveRepository.saveIntake(
             PillIntake(
                 day.regimenId,
@@ -106,7 +111,8 @@ class MainViewModel(
     }
 
     fun unmarkPill(day: com.example.ciclomenstrual.domain.model.PillDay) = viewModelScope.launch {
-        if (day.date > DateNormalizer.normalize(now()) || day.isPlacebo) return@launch
+        if (day.date > DateNormalizer.todayKey(now()) || day.isPlacebo) return@launch
+        pillReminderScheduler.cancelCurrentNotification()
         contraceptiveRepository.deleteIntake(day.regimenId, day.date)
         reloadContraceptiveState(reconcile = false)
     }
@@ -134,8 +140,7 @@ class MainViewModel(
         var cycles = mutableState.value.cycles.toMutableList()
         if (oldSelected != null) {
             cycles.remove(oldSelected)
-            // Preserves the legacy lookup semantics for compatibility.
-            cycleRepository.deleteByStartDate(date)
+            cycleRepository.deleteByStartDate(oldSelected.startDate)
         }
         val cycle = Cycle(date)
         cycles.add(cycle)
@@ -143,6 +148,7 @@ class MainViewModel(
         if (CycleRules.isOngoing(cycle, cycles, now())) cycleRepository.insert(cycle)
         mutableState.value = mutableState.value.copy(cycles = cycles, selectedCycle = cycle)
         rebuildMarkers()
+        scheduleCycleReminder()
     }
 
     fun markCycleEnd(date: Long) = viewModelScope.launch {
@@ -159,6 +165,7 @@ class MainViewModel(
                 val cycles = state.cycles.toMutableList().apply { selected?.let(::remove) }
                 mutableState.value = state.copy(cycles = cycles, selectedCycle = null)
                 rebuildMarkers()
+                scheduleCycleReminder()
             }
             else -> {
                 val completed = selected!!.copy(endDate = date)
@@ -170,44 +177,44 @@ class MainViewModel(
                 val cycles = state.cycles.map { if (it == selected) completed else it }
                 mutableState.value = state.copy(cycles = cycles, selectedCycle = null)
                 rebuildMarkers()
-                if (cycles.lastOrNull() == completed) {
-                    mutableState.value.nextPredictedDay?.let(reminderScheduler::schedule)
-                }
+                scheduleCycleReminder()
             }
         }
     }
 
     fun deleteCycle(cycle: Cycle) = viewModelScope.launch {
-        val wasLast = mutableState.value.cycles.lastOrNull() == cycle
         cycleRepository.delete(cycle)
         mutableState.value = mutableState.value.copy(
             cycles = mutableState.value.cycles - cycle,
             selectedCycle = mutableState.value.selectedCycle.takeUnless { it == cycle },
         )
-        if (wasLast) reminderScheduler.cancel()
         rebuildMarkers()
-        if (wasLast) mutableState.value.nextPredictedDay?.let(reminderScheduler::schedule)
+        scheduleCycleReminder()
         message("Ciclo eliminado")
     }
 
     fun addNote(date: Long, content: String) = viewModelScope.launch {
         if (content.trim().isEmpty()) return@launch
-        val note = Note(date = DateNormalizer.normalize(date), content = content)
-        noteRepository.insert(note)
-        val notes = mutableState.value.notes + note
-        mutableState.value = mutableState.value.copy(notes = notes)
-        selectDate(date)
+        val note = Note(date = date, content = content)
+        val storedNote = note.copy(id = noteRepository.insert(note))
+        val notes = mutableState.value.notes + storedNote
+        mutableState.value = mutableState.value.copy(
+            notes = notes,
+            selectedDate = date,
+            selectedDateNotes = notes.filter { it.date == date },
+        )
         rebuildMarkers()
     }
 
     fun deleteNote(note: Note) = viewModelScope.launch {
-        noteRepository.deleteByDateAndContent(note.date, note.content)
-        // The DAO removes all duplicates; mirror that result in memory.
-        val notes = mutableState.value.notes.filterNot {
-            it.date == note.date && it.content == note.content
-        }
-        mutableState.value = mutableState.value.copy(notes = notes)
-        mutableState.value.selectedDate?.let(::selectDate)
+        if (note.id == 0L) return@launch
+        noteRepository.deleteById(note.id)
+        val notes = mutableState.value.notes.filterNot { it.id == note.id }
+        val selectedDate = mutableState.value.selectedDate
+        mutableState.value = mutableState.value.copy(
+            notes = notes,
+            selectedDateNotes = selectedDate?.let { date -> notes.filter { it.date == date } }.orEmpty(),
+        )
         rebuildMarkers()
     }
 
@@ -236,6 +243,7 @@ class MainViewModel(
                 exactAlarmAvailable = pillReminderScheduler.canScheduleExact(),
             )
             rebuildMarkers()
+            scheduleCycleReminder()
             schedulePillReminder()
         }.onFailure {
             mutableState.value = mutableState.value.copy(isLoading = false)
@@ -282,7 +290,15 @@ class MainViewModel(
         val state = mutableState.value
         state.activeRegimen?.let {
             pillReminderScheduler.scheduleNext(it, state.pillIntakes, now())
-        } ?: pillReminderScheduler.cancel()
+        } ?: run {
+            pillReminderScheduler.cancel()
+            pillReminderScheduler.cancelCurrentNotification()
+        }
+    }
+
+    private fun scheduleCycleReminder() {
+        mutableState.value.nextPredictedDay?.let(reminderScheduler::schedule)
+            ?: reminderScheduler.cancel()
     }
 
     private fun refreshDerivedPillState() {
@@ -297,7 +313,7 @@ class MainViewModel(
     }
 
     private fun buildInitialIntakes(regimen: ContraceptiveRegimen, currentTime: Long): List<PillIntake> {
-        val today = DateNormalizer.normalize(currentTime)
+        val today = DateNormalizer.todayKey(currentTime)
         val result = mutableListOf<PillIntake>()
         var date = regimen.startDate
         while (date < today) {
@@ -322,7 +338,7 @@ class MainViewModel(
         currentTime: Long,
     ) {
         val existingDates = existing.filter { it.regimenId == regimen.id }.mapTo(hashSetOf()) { it.scheduledDate }
-        val today = DateNormalizer.normalize(currentTime)
+        val today = DateNormalizer.todayKey(currentTime)
         var date = regimen.startDate
         while (date <= today) {
             if (date !in existingDates) {

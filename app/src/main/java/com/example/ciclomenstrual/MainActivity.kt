@@ -32,6 +32,7 @@ import com.example.ciclomenstrual.data.repository.RoomContraceptiveRepository
 import com.example.ciclomenstrual.databinding.ActivityMainBinding
 import com.example.ciclomenstrual.databinding.DialogDayOptionsBinding
 import com.example.ciclomenstrual.domain.CalendarMarkerFactory
+import com.example.ciclomenstrual.domain.DateNormalizer
 import com.example.ciclomenstrual.domain.model.CalendarMarker
 import com.example.ciclomenstrual.domain.model.ContraceptiveRegimen
 import com.example.ciclomenstrual.domain.model.Cycle
@@ -90,6 +91,7 @@ class MainActivity : AppCompatActivity() {
             Calendar.getInstance().apply { add(Calendar.MONTH, -6) },
             Calendar.getInstance().apply { add(Calendar.MONTH, 6) },
         ) {
+            binding.calendarSelectionOverlay.showSelection()
             viewModel.selectDate(it.calendar.timeInMillis)
         }
     }
@@ -175,13 +177,19 @@ class MainActivity : AppCompatActivity() {
         binding.selectedDayLabel.text = date?.let {
             getString(
                 R.string.selected_date,
-                SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it),
+                SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(
+                    DateNormalizer.toLocalTimestamp(it),
+                ),
             )
         }.orEmpty()
     }
 
     private fun toCalendarDay(marker: CalendarMarker): CalendarDay {
-        val calendarDay = CalendarDay(Calendar.getInstance().apply { timeInMillis = marker.date })
+        val calendarDay = CalendarDay(
+            Calendar.getInstance().apply {
+                timeInMillis = DateNormalizer.toLocalTimestamp(marker.date)
+            },
+        )
         when (marker.background) {
             MarkerBackground.PERIOD -> CalendarInterop.setBackground(calendarDay, R.color.period_day)
             MarkerBackground.ONGOING -> CalendarInterop.setBackground(calendarDay, R.color.ongoing_day)
@@ -190,9 +198,7 @@ class MainActivity : AppCompatActivity() {
         }
         val isPastMissedPill = marker.pillDay?.let {
             it.status == PillDayStatus.MISSED &&
-                it.date < com.example.ciclomenstrual.domain.DateNormalizer.normalize(
-                    System.currentTimeMillis(),
-                )
+                it.date < DateNormalizer.todayKey()
         } == true
         if (isPastMissedPill) {
             CalendarInterop.setLabelColor(calendarDay, R.color.pill_missed_day)
@@ -247,9 +253,7 @@ class MainActivity : AppCompatActivity() {
             day.pillNumber,
         )
         binding.pillStatus.text = getString(R.string.pill_status, pillStatusText(day.status))
-        val editable = !day.isPlacebo && day.date <= com.example.ciclomenstrual.domain.DateNormalizer.normalize(
-            System.currentTimeMillis(),
-        )
+        val editable = !day.isPlacebo && day.date <= DateNormalizer.todayKey()
         binding.pillActionButton.visibility = if (editable) View.VISIBLE else View.GONE
         if (editable) {
             val taken = day.status == PillDayStatus.TAKEN
@@ -310,8 +314,9 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Recordatorios diarios")
             .setMessage(
-                "La app avisará a las 14:00 y cada 15 minutos hasta las 16:00. " +
-                    "Para que sea puntual, permite Alarmas y recordatorios.",
+                "La app avisará a las 14:00 en verano y a las 13:00 en invierno " +
+                    "según la hora peninsular española. Para que sea puntual, " +
+                    "permite Alarmas y recordatorios.",
             )
             .setPositiveButton("Configurar") { _, _ -> requestExactAlarmPermission() }
             .setNegativeButton("Más tarde", null)
@@ -342,14 +347,23 @@ class MainActivity : AppCompatActivity() {
         val dialog = AlertDialog.Builder(this).setView(dialogBinding.root).create()
         dialogBinding.selectedDateText.text = getString(
             R.string.selected_date,
-            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date),
+            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(
+                DateNormalizer.toLocalTimestamp(date),
+            ),
         )
         val completeCycle = viewModel.cycleForDate(date)
         if (completeCycle != null) {
             dialogBinding.btnStartCycle.setText(R.string.delete_cycle)
             dialogBinding.btnStartCycle.setOnClickListener {
-                viewModel.deleteCycle(completeCycle)
                 dialog.dismiss()
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.confirm_delete_cycle_title)
+                    .setMessage(R.string.confirm_delete_cycle_message)
+                    .setPositiveButton(R.string.delete_cycle) { _, _ ->
+                        viewModel.deleteCycle(completeCycle)
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
             }
             dialogBinding.btnEndCycle.visibility = View.GONE
         } else {

@@ -16,7 +16,8 @@ class CalendarMarkerFactory(
         pillDays: List<PillDay> = emptyList(),
     ): Pair<List<CalendarMarker>, Long?> {
         val markers = linkedMapOf<Long, CalendarMarker>()
-        val notesByDay = notes.groupBy { DateNormalizer.normalize(it.date) }
+        val notesByDay = notes.groupBy { it.date }
+        val today = DateNormalizer.todayKey(now)
 
         cycles.forEach { cycle ->
             val end = cycle.endDate
@@ -26,19 +27,19 @@ class CalendarMarkerFactory(
                 put(markers, cycle.startDate, MarkerBackground.PERIOD, notesByDay)
                 if (CycleRules.isOngoing(cycle, cycles, now)) {
                     val tomorrow = DateNormalizer.addDays(cycle.startDate, 1)
-                    addRange(markers, tomorrow, now, MarkerBackground.ONGOING, notesByDay)
+                    addRange(markers, tomorrow, today, MarkerBackground.ONGOING, notesByDay)
                 }
             }
         }
 
         val predicted = cycles.lastOrNull()?.let(predictionPolicy::predict)
         predicted?.let {
-            val day = DateNormalizer.normalize(it)
+            val day = it
             markers[day] = CalendarMarker(
                 date = day,
                 background = MarkerBackground.PREDICTED,
                 hasNote = notesByDay[day].orEmpty().isNotEmpty(),
-                overduePrediction = it < now,
+                overduePrediction = it < today,
             )
         }
         notesByDay.filterValues { it.isNotEmpty() }.keys.forEach { day ->
@@ -57,8 +58,8 @@ class CalendarMarkerFactory(
         background: MarkerBackground,
         notes: Map<Long, List<Note>>,
     ) {
-        var day = DateNormalizer.normalize(start)
-        val last = DateNormalizer.normalize(end)
+        var day = start
+        val last = end
         while (day <= last) {
             put(target, day, background, notes)
             day = DateNormalizer.addDays(day, 1)
@@ -71,7 +72,7 @@ class CalendarMarkerFactory(
         background: MarkerBackground,
         notes: Map<Long, List<Note>>,
     ) {
-        val day = DateNormalizer.normalize(date)
+        val day = date
         target[day] = CalendarMarker(day, background, notes[day].orEmpty().isNotEmpty())
     }
 }

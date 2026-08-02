@@ -53,6 +53,8 @@ class AlarmManagerPillReminderScheduler(
 
     override fun cancel() = alarmManager.cancel(basePendingIntent(context))
 
+    override fun cancelCurrentNotification() = NotificationHelper.cancelPill(context)
+
     override fun canScheduleExact(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
 

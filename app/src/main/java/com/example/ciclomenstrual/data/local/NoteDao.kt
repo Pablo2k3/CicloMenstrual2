@@ -11,8 +11,8 @@ interface NoteDao {
     suspend fun getAll(): List<RoomNote>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(note: RoomNote)
+    suspend fun insert(note: RoomNote): Long
 
-    @Query("DELETE FROM notes WHERE date = :date AND content = :content")
-    suspend fun deleteByDateAndContent(date: Long, content: String)
+    @Query("DELETE FROM notes WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }

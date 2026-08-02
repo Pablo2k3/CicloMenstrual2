@@ -22,13 +22,14 @@ class PillRescheduleReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val repository = RoomContraceptiveRepository(AppDatabase.getInstance(context))
+                val scheduler = AlarmManagerPillReminderScheduler(context)
                 repository.getActiveRegimen()?.let { regimen ->
                     val now = System.currentTimeMillis()
                     val calculator = PillScheduleCalculator()
                     val knownDates = repository.getIntakes()
                         .filter { it.regimenId == regimen.id }
                         .mapTo(hashSetOf()) { it.scheduledDate }
-                    val today = DateNormalizer.normalize(now)
+                    val today = DateNormalizer.todayKey(now)
                     var date = regimen.startDate
                     while (date <= today) {
                         if (date !in knownDates) {
@@ -57,11 +58,14 @@ class PillRescheduleReceiver : BroadcastReceiver() {
                         }
                         date = DateNormalizer.addDays(date, 1)
                     }
-                    AlarmManagerPillReminderScheduler(context).scheduleNext(
+                    scheduler.scheduleNext(
                         regimen,
                         repository.getIntakes(),
                         now,
                     )
+                } ?: run {
+                    scheduler.cancel()
+                    NotificationHelper.cancelPill(context)
                 }
             } finally {
                 pending.finish()
