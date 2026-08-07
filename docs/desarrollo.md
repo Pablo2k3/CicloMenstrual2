@@ -77,6 +77,8 @@ Antes de publicar, comprobar:
 
 - primer arranque con y sin tratamiento configurado;
 - selección de día, cambio de mes/año y recreación de actividad;
+- selección tocando directamente el número y tocando las zonas intermedias de la celda;
+- modo oscuro: calendario, superficies, tarjeta, lista, aviso y barras del sistema;
 - ciclo completo, ciclo incompleto, cambio de inicio, solapamiento y eliminación;
 - nota vacía, nota con contenido y eliminación individual cuando existen
   duplicados;

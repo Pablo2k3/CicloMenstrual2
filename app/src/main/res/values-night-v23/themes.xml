@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.CicloMenstrual" parent="Base.Theme.CicloMenstrual">
+        <item name="android:navigationBarColor">@color/app_background</item>
+        <item name="android:statusBarColor">@color/app_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

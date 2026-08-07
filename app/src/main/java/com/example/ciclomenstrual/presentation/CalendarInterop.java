@@ -3,6 +3,7 @@ package com.example.ciclomenstrual.presentation;
 import android.content.Context;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.view.View;
 
 import com.applandeo.materialcalendarview.CalendarDay;
 import com.applandeo.materialcalendarview.CalendarUtils;
@@ -30,6 +31,17 @@ public final class CalendarInterop {
         view.setMinimumDate(minimum);
         view.setMaximumDate(maximum);
         view.setOnCalendarDayClickListener(callback::onDay);
+    }
+
+    /**
+     * The library's internal calendar root has a fixed white background.
+     * Keep it aligned with the app surface in both light and dark themes.
+     */
+    public static void setSurfaceColor(CalendarView view, int color) {
+        if (view.getChildCount() > 0) {
+            View calendarRoot = view.getChildAt(0);
+            calendarRoot.setBackgroundColor(color);
+        }
     }
 
     public static void setBackground(CalendarDay day, int resource) {

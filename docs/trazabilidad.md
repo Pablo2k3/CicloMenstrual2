@@ -27,6 +27,8 @@ la verificación disponible actualmente.
 | F20 | Convertir la hora de referencia de España a la zona del dispositivo | `PillScheduleCalculator`, `AlarmManagerPillReminderScheduler` | `PillScheduleCalculatorTest`: Madrid 14:00/13:00 y viaje 11:00/10:00 |
 | F21 | Mantener fechas de calendario al viajar | `DateNormalizer`, `MIGRATION_2_3`, `MainActivity` | `DateNormalizerTest`; migración instrumentada |
 | F22 | Validar permisos y receivers declarados | `AndroidManifest.xml`, `PillAlarmReceiver`, `PillActionReceiver`, `PillRescheduleReceiver` | `AndroidConfigurationTest`; `connectedDebugAndroidTest` ejecutado en `Pixel_7 (AVD) - 16` |
+| F23 | Resaltar el día seleccionado también al tocar el margen de su celda | CalendarSelectionOverlay, MainActivity | Validación manual de toque sobre el número y sobre las zonas intermedias de la celda |
+| F24 | Mantener una apariencia coherente en modo claro y oscuro | temas, colores values-night, activity_main.xml, CalendarInterop | lintDebug, assembleDebug; validación visual manual en ambos modos |
 
 Las filas pendientes no indican que la función no exista; indican que todavía no
 hay una prueba automatizada específica para ese flujo. La suite instrumentada de

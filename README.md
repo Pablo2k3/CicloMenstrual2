@@ -36,6 +36,12 @@ decide qué hacer ante una dosis omitida.
 La descripción detallada de los flujos de usuario, estados y validaciones está
 en el [manual funcional](docs/funcionalidades.md).
 
+## Presentación visual
+
+La selección del calendario ocupa toda la celda del día: tocar cerca del número mantiene el círculo azul en la misma fecha que ha resuelto el calendario.
+
+La pantalla conserva la apariencia original en modo claro y adapta únicamente el calendario, la lista de notas, los avisos y las barras del sistema cuando se usa el modo oscuro.
+
 ## Estructura del proyecto
 
 ```text

@@ -94,6 +94,10 @@ class MainActivity : AppCompatActivity() {
             binding.calendarSelectionOverlay.showSelection()
             viewModel.selectDate(it.calendar.timeInMillis)
         }
+        CalendarInterop.setSurfaceColor(
+            binding.calendarView,
+            ContextCompat.getColor(this, R.color.app_surface),
+        )
     }
 
     private fun setupNotes() {
@@ -214,10 +218,10 @@ class MainActivity : AppCompatActivity() {
 
         val layers = mutableListOf<Drawable>()
         if (marker.hasNote) {
-            layers += CalendarInterop.textDrawable(this, "📝", R.color.black, 13)
+            layers += CalendarInterop.textDrawable(this, "📝", R.color.calendar_note_icon, 13)
         }
         if (marker.overduePrediction) {
-            layers += CalendarInterop.textDrawable(this, "⚠️", R.color.red, 13)
+            layers += CalendarInterop.textDrawable(this, "⚠️", R.color.calendar_warning_icon, 13)
         }
         if (layers.size == 1) return layers.single()
         return LayerDrawable(layers.toTypedArray()).apply {

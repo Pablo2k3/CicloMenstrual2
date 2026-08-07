@@ -45,8 +45,14 @@
                 app:eventsEnabled="true"
                 app:headerColor="?attr/colorPrimary"
                 app:headerLabelColor="?attr/colorOnPrimary"
+                app:abbreviationsBarColor="@color/calendar_abbreviations_bar"
+                app:abbreviationsLabelsColor="@color/calendar_abbreviations_label"
+                app:pagesColor="@color/calendar_pages"
+                app:daysLabelsColor="@color/calendar_days_label"
+                app:anotherMonthsDaysLabelsColor="@color/calendar_another_month_label"
                 app:todayLabelColor="?attr/colorPrimary"
-                app:selectionColor="?attr/colorSecondary"/>
+                app:selectionColor="?attr/colorSecondary"
+                app:selectionLabelColor="@color/calendar_selection_label"/>
 
         </com.example.ciclomenstrual.presentation.CalendarSelectionOverlay>
 
@@ -65,10 +71,10 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="12dp"
             android:layout_marginTop="4dp"
-            android:background="#FFFFE0B2"
+            android:background="@color/warning_container"
             android:padding="8dp"
             android:text="@string/exact_alarm_warning"
-            android:textColor="@color/black"
+            android:textColor="@color/warning_on_container"
             android:visibility="gone"/>
 
         <com.google.android.material.card.MaterialCardView
@@ -130,7 +136,7 @@
             android:layout_weight="1"
             android:layout_margin="8dp"
             android:padding="8dp"
-            android:background="@android:color/white"/>
+            android:background="@color/notes_surface"/>
         <!-- Se ha eliminado el ScrollView -->
 
     </LinearLayout>

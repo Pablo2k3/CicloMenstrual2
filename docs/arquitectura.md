@@ -47,6 +47,8 @@ MainViewModel ─────────────── MainUiState + MainUi
 - `CalendarInterop` concentra la llamada Java necesaria para la API heredada de
   `material-calendar-view`. `CalendarSelectionOverlay` dibuja la selección sin
   pedir al adaptador del calendario que reconstruya sus páginas.
+- CalendarSelectionOverlay identifica la etiqueta de día de la celda pulsada, aunque el toque no caiga directamente sobre el número, y restaura el fondo original al cambiar de fecha.
+- CalendarInterop.setSurfaceColor corrige el fondo blanco fijo de la vista interna de material-calendar-view; los recursos values-night mantienen superficies y textos coherentes en modo oscuro sin alterar la paleta del modo claro.
 
 ### `domain`
 

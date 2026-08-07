@@ -28,6 +28,7 @@ class CalendarSelectionOverlay @JvmOverloads constructor(
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> clearSelection()
             MotionEvent.ACTION_UP -> pendingDayLabel = findDayLabelAt(this, event.x, event.y)
+            MotionEvent.ACTION_CANCEL -> clearSelection()
         }
         return super.dispatchTouchEvent(event)
     }
@@ -63,7 +64,23 @@ class CalendarSelectionOverlay @JvmOverloads constructor(
             val childX = x + view.scrollX - child.left - child.translationX
             val childY = y + view.scrollY - child.top - child.translationY
             if (childX in 0f..child.width.toFloat() && childY in 0f..child.height.toFloat()) {
+                // GridView items are wider than the number itself. The calendar
+                // still dispatches a click for those areas, so use the label
+                // belonging to the item before descending into its children.
+                directDayLabel(child)?.let { return it }
                 findDayLabelAt(child, childX, childY)?.let { return it }
+            }
+        }
+        return null
+    }
+
+    private fun directDayLabel(view: View): TextView? {
+        if (view !is ViewGroup) return null
+
+        for (index in 0 until view.childCount) {
+            val child = view.getChildAt(index)
+            if (child.id == com.applandeo.materialcalendarview.R.id.dayLabel) {
+                return child as? TextView
             }
         }
         return null

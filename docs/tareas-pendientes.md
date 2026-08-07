@@ -36,6 +36,8 @@ validada.
 | T06 | Media | Completada | La eliminación por fecha y contenido no distinguía notas duplicadas. | Definir una identidad inequívoca para las notas y dejar de borrar duplicados no seleccionados. | Eliminar una nota borra únicamente la nota elegida, incluso si existen otras con la misma fecha y contenido. |
 | T07 | Media | Completada | La acción de eliminar un ciclo no tenía una segunda confirmación explícita. | Pedir confirmación antes de eliminar un ciclo completo. | Un toque accidental no elimina historial sin una segunda confirmación explícita. |
 | T08 | Media | Completada | La cobertura de pruebas específicas de ViewModel, receivers, permisos y ejecución en dispositivo estaba pendiente de cerrar. | Completar pruebas de ViewModel, receivers, permisos, cambios de zona horaria y transiciones de horario de verano. | Los flujos críticos tienen pruebas automatizadas o casos manuales documentados y reproducibles; las pruebas instrumentadas se ejecutan correctamente en un dispositivo conectado. |
+| T09 | Media | Completada | La capa de selección solo encontraba el número y no la celda completa. | Resaltar la fecha elegida también al tocar zonas intermedias de la celda del calendario. | El círculo azul aparece tanto al tocar el número como cualquier margen que la librería use para resolver ese día. |
+| T10 | Media | Completada | El modo oscuro heredaba fondos blancos y colores sin adaptar de la librería y de la pantalla principal. | Aplicar una paleta oscura coherente a superficies, textos, marcadores, avisos y barras del sistema. | El modo claro conserva sus colores y superficies anteriores; en modo oscuro no quedan superficies blancas inesperadas y el contraste sigue siendo legible. |
 
 ## Mejoras futuras
 

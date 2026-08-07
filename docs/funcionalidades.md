@@ -32,6 +32,12 @@ actualiza el estado de selección y recalcula qué notas y qué pastilla
 corresponden a ese día. La selección visual se dibuja sobre el calendario sin
 alterar los marcadores de ciclos o pastillas.
 
+## Selección y apariencia
+
+La selección visual se aplica a la celda completa del día, no solo al rectángulo que ocupa el número. Por eso un toque en el margen o en el espacio entre el número y el icono conserva el círculo azul sobre el día que la librería ha seleccionado.
+
+El tema claro conserva la apariencia anterior. El tema oscuro usa superficies, texto, marcadores y avisos adaptados a fondos oscuros. El fondo interno fijo del calendario también se reemplaza por la superficie de la aplicación.
+
 ## Registro de ciclos
 
 El botón flotante ofrece acciones distintas según el día y el estado del último
